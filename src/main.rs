@@ -62,9 +62,18 @@ impl Grid {
     fn to_image_buffer(&self) -> RgbImage {
         let mut result = RgbImage::new(self.width as u32, self.height as u32);
 
+        let max = 0;
         for x in 0..self.width {
             for y in 0..self.height {
-                let value = (self.value(x, y) % 255) as u8;
+                if self.value(x, y) > max {
+                    max = self.value(x, y);
+                }
+            }
+        }
+
+        for x in 0..self.width {
+            for y in 0..self.height {
+                let value = ((self.value(x, y) as f64 / max as f64) * 255.0 ) as u8;
                 //println!("({}, {}) -> {}, value: {}", x, y, self.value(x, y), value);
                 result.put_pixel(x as u32, y as u32, Rgb([value, 0, 0]));
             }
@@ -78,6 +87,8 @@ fn main() -> Result<(), EscapeError> {
     let min = Complex::new(-4.0, -4.0);
 
     let mut grid = Grid::new(min, -0.01, 800, 800);
+    //let mut grid2 = Grid::new(min, -0.01, 800, 800);
+    //let mut grid3 = Grid::new(min, -0.01, 800, 800);
 
     let mut iterations = Vec::with_capacity(51);
     let total = 100000000;
