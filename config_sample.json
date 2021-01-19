@@ -1,0 +1,32 @@
+{
+  "cutoffs": [
+    {
+      "cutoff": 50,
+      "color": [
+        0.5,
+        0.0,
+        0.545
+      ]
+    },
+    {
+      "cutoff": 200,
+      "color": [
+        0.2,
+        0.9,
+        0.1
+      ]
+    },
+    {
+      "cutoff": 1000,
+      "color": [
+        1.0,
+        1.0,
+        1.0
+      ]
+    }
+  ],
+  "width": 1700,
+  "samples": 100000000,
+  "norm_cutoff": 2.0,
+  "output_path": "Output.png"
+}
