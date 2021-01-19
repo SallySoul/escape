@@ -14,7 +14,7 @@ use crate::config::{CutoffColor, RenderConfig};
 use crate::error::EscapeError;
 use crate::grid::{CountGrid, NormalizedGrid};
 
-fn run_config(config: &RenderConfig, worker_samples: usize) -> Vec<NormalizedGrid> {
+fn run_config(config: &RenderConfig, worker_samples: usize) -> Vec<CountGrid> {
     let min = Complex::new(-2.0, -2.0);
     let mut result = vec![
         CountGrid::new(min, 4.0 / config.width as f64, config.width, config.width);
@@ -50,14 +50,10 @@ fn run_config(config: &RenderConfig, worker_samples: usize) -> Vec<NormalizedGri
     }
 
     result
-        .iter()
-        .map(|grid| grid.to_normalized_grid())
-        .collect()
 }
 
 fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
     let mut result = RgbImage::new(config.width as u32, config.width as u32);
-
     for x in 0..config.width {
         for y in 0..config.width {
             let mut rgb_fp = [0.0, 0.0, 0.0];
@@ -82,12 +78,29 @@ fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
     result
 }
 
+fn merge_grids(config: &RenderConfig, grids: Vec<&CountGrid>) -> CountGrid {
+    let min = Complex::new(-2.0, -2.0);
+    let mut result = CountGrid::new(, 4.0 / config.width as f64, config.width, config.width);
+    for x in 0..config.width {
+        for y in 0..config.width {
+            let sum = 0;
+            for grid in grids {
+                sum += grid.value(x, y);
+            }
+            result.set_value(sum, x, y);
+        }
+    }
+
+    result
+}
+
 fn main() -> Result<(), EscapeError> {
     let args: Vec<String> = std::env::args().collect();
 
     let config = serde_json::from_reader(std::fs::File::open(&args[1])?)?;
     let grids = run_config(&config, config.samples);
-    color_grids(&config, &grids).save(config.output_path)?;
+    let n_grids = grids.iter().map(|x| x.to_normalized_grid()).collect::<Vec<NormalizedGrid>>();
+    color_grids(&config, &n_grids).save(config.output_path)?;
 
     Ok(())
 }

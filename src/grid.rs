@@ -2,7 +2,7 @@ use nalgebra::Complex;
 
 #[derive(Clone)]
 pub struct CountGrid {
-    boxes: Vec<u32>,
+    boxes: Vec<u64>,
     origin: Complex<f64>,
     max: Complex<f64>,
     pixel_width: f64,
@@ -25,11 +25,11 @@ impl CountGrid {
         }
     }
 
-    fn get_box(&mut self, x: usize, y: usize) -> &mut u32 {
-        &mut self.boxes[y * self.width + x]
+    fn set_value(&mut self, value: u64, x: usize, y: usize) {
+        self.boxes[y * self.width + x] = value;
     }
 
-    pub fn value(&self, x: usize, y: usize) -> u32 {
+    pub fn value(&self, x: usize, y: usize) -> u64 {
         self.boxes[y * self.width + x]
     }
 
@@ -69,7 +69,6 @@ impl CountGrid {
     }
 }
 
-#[derive(Clone)]
 pub struct NormalizedGrid {
     boxes: Vec<f64>,
     width: usize,
