@@ -80,11 +80,11 @@ fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
 
 fn merge_grids(config: &RenderConfig, grids: Vec<&CountGrid>) -> CountGrid {
     let min = Complex::new(-2.0, -2.0);
-    let mut result = CountGrid::new(, 4.0 / config.width as f64, config.width, config.width);
+    let mut result = CountGrid::new(min, 4.0 / config.width as f64, config.width, config.width);
     for x in 0..config.width {
         for y in 0..config.width {
-            let sum = 0;
-            for grid in grids {
+            let mut sum = 0;
+            for grid in &grids {
                 sum += grid.value(x, y);
             }
             result.set_value(sum, x, y);
@@ -98,8 +98,19 @@ fn main() -> Result<(), EscapeError> {
     let args: Vec<String> = std::env::args().collect();
 
     let config = serde_json::from_reader(std::fs::File::open(&args[1])?)?;
-    let grids = run_config(&config, config.samples);
-    let n_grids = grids.iter().map(|x| x.to_normalized_grid()).collect::<Vec<NormalizedGrid>>();
+    let grids_1 = run_config(&config, config.samples);
+    let grids_2 = run_config(&config, config.samples);
+
+    let grids = vec![
+        merge_grids(&config, vec![&grids_1[0], &grids_2[0]]),
+        merge_grids(&config, vec![&grids_1[1], &grids_2[1]]),
+        merge_grids(&config, vec![&grids_1[2], &grids_2[2]]),
+    ];
+
+    let n_grids = grids
+        .iter()
+        .map(|x| x.to_normalized_grid())
+        .collect::<Vec<NormalizedGrid>>();
     color_grids(&config, &n_grids).save(config.output_path)?;
 
     Ok(())

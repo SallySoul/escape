@@ -25,7 +25,7 @@ impl CountGrid {
         }
     }
 
-    fn set_value(&mut self, value: u64, x: usize, y: usize) {
+    pub fn set_value(&mut self, value: u64, x: usize, y: usize) {
         self.boxes[y * self.width + x] = value;
     }
 
