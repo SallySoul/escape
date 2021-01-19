@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
+#![feature(clamp)]
 
 use image::{Rgb, RgbImage};
 use nalgebra::Complex;
@@ -22,11 +23,10 @@ async fn run_config_async(config: Arc<RenderConfig>, worker_samples: usize) -> V
 
 fn run_config(config: &RenderConfig, worker_samples: usize) -> Vec<Arc<CountGrid>> {
     let min = Complex::new(-2.0, -2.0);
-    let result_grids = vec![
+    let mut result = vec![
         CountGrid::new(min, 4.0 / config.width as f64, config.width, config.width);
         config.cutoffs.len()
     ];
-    let mut result: Vec<Arc<CountGrid>> = result_grids.drain(0..).map(|grid| Arc::new(grid)).collect();
 
 
     let sample_range = rand::distributions::Uniform::from(-2.0..2.0);
@@ -35,7 +35,11 @@ fn run_config(config: &RenderConfig, worker_samples: usize) -> Vec<Arc<CountGrid
     let max_iteration = config.cutoffs.last().unwrap().cutoff;
     let norm_cutoff_sqr = config.norm_cutoff * config.norm_cutoff;
     let mut sequence_buffer = Vec::with_capacity(max_iteration);
-    for _ in 0..worker_samples {
+    for r in 0..worker_samples {
+        if r % 10000 == 0 {
+            println!("i: {}, {}%", r, (r as f64 / worker_samples as f64) * 100.0);
+        }
+
         let c = Complex::new(sample_range.sample(&mut rng), sample_range.sample(&mut rng));
         let mut z = c;
 
@@ -56,7 +60,7 @@ fn run_config(config: &RenderConfig, worker_samples: usize) -> Vec<Arc<CountGrid
         sequence_buffer.clear();
     }
 
-    result
+    result.drain(0..).map(|grid| Arc::new(grid)).collect()
 }
 
 fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
@@ -73,7 +77,7 @@ fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
             let rgb = {
                 let mut rgb = [0, 0, 0];
                 for color in 0..3 {
-                    rgb[color] = (rgb_fp[color] * 255.0) as u8;
+                    rgb[color] = (rgb_fp[color].clamp(0.0, 1.0) * 255.0) as u8;
                 }
                 rgb
             };
@@ -85,13 +89,13 @@ fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
     result
 }
 
-fn merge_grids(config: &RenderConfig, grids: Vec<CountGrid>) -> CountGrid {
+fn merge_grids(config: &RenderConfig, grids: Vec<Arc<CountGrid>>) -> CountGrid {
     let min = Complex::new(-2.0, -2.0);
     let mut result = CountGrid::new(min, 4.0 / config.width as f64, config.width, config.width);
     for x in 0..config.width {
         for y in 0..config.width {
             let mut sum = 0;
-            for grid in grids {
+            for grid in &grids {
                 sum += grid.value(x, y);
             }
             result.set_value(sum, x, y);
@@ -101,16 +105,27 @@ fn merge_grids(config: &RenderConfig, grids: Vec<CountGrid>) -> CountGrid {
     result
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "escape")]
-struct CliOptions {
-    /// Path to the config file
-    #[structopt(short, long, parse(from_os_str))]
-    config: PathBuf,
 
-    /// The number of worker threads to spawn (more threads may be used)
-    #[structopt(short, long)]
-    workers: usize,
+async fn merge_results(config: Arc<RenderConfig>, results: Vec<Vec<Arc<CountGrid>>>) -> Vec<NormalizedGrid> {
+    let cutoff_count = config.cutoffs.len();
+    let mut tasks = Vec::with_capacity(cutoff_count);
+    for cutoff_index in 0..cutoff_count {
+        let mut count_grids = Vec::with_capacity(results.len());
+        for w in 0..results.len() {
+            count_grids.push(results[w][cutoff_index].clone());
+        }
+        let c = config.clone();
+        tasks.push(tokio::spawn(async move {
+            merge_grids(&c, count_grids).to_normalized_grid()
+        }));
+    }
+
+    let mut result = Vec::with_capacity(cutoff_count);
+    for task in tasks {
+        result.push(task.await.unwrap());
+    }
+
+    result
 }
 
 async fn async_main(config: Arc<RenderConfig>, workers: usize) -> Result<(), EscapeError>{
@@ -128,49 +143,29 @@ async fn async_main(config: Arc<RenderConfig>, workers: usize) -> Result<(), Esc
     }
 
     println!("Futures done");
-/*
-    let mut merged_grids = Vec::with_capacity(config.cutoffs.len());
-    let mut grid_buffer = Vec::with_capacity(workers);
-    for i in 0..config.cutoffs.len() {
-        for w in 0..workers {
-            grid_buffer.push(&results[w][i]);
-        }
-        merged_grids.push(merge_grids(&config, grid_buffer).to_normalized_grid());
-        grid_buffer.clear();
-    }
+
+    let merged_grids = merge_results(config.clone(), results).await;
 
     println!("Done Merging");
 
     color_grids(&config, &merged_grids).save(&config.output_path)?;
-*/
+
     println!("Done writing file");
 
     Ok(())
 }
 
-async fn merge_results(config: Arc<RenderConfig>, results: Vec<Vec<CountGrid>>) -> Vec<NormalizedGrid> {
-    let cutoff_count = config.cutoffs.len();
-    let mut tasks = Vec::with_capacity(cutoff_count);
-    for cutoff_index in 0..cutoff_count {
-        let mut count_grids = Vec::with_capacity(results.len());
-        for w in 0..results.len() {
-            count_grids.push(results[w][cutoff_index]);
-        }
-        tasks.push(tokio::spawn(async move {
-            let c = config.clone();
-            merge_grids(&c, count_grids).to_normalized_grid()
-        }));
-    }
+#[derive(StructOpt, Debug)]
+#[structopt(name = "escape")]
+struct CliOptions {
+    /// Path to the config file
+    #[structopt(short, long, parse(from_os_str))]
+    config: PathBuf,
 
-    let mut result = Vec::with_capacity(cutoff_count);
-    for task in tasks {
-        result.push(task.await.unwrap());
-    }
-
-    result
+    /// The number of worker threads to spawn (more threads may be used)
+    #[structopt(short, long)]
+    workers: usize,
 }
-
-
 
 fn main() -> Result<(), EscapeError> {
     let cli_options = CliOptions::from_args();

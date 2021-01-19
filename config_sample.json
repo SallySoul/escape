@@ -17,16 +17,32 @@
       ]
     },
     {
-      "cutoff": 1000,
+      "cutoff": 10000,
       "color": [
-        1.0,
-        1.0,
-        1.0
+        0.3,
+        0.3,
+        0.5
+      ]
+    },
+    {
+      "cutoff": 20000,
+      "color": [
+        0.2,
+        0.6,
+        0.3
+      ]
+    },
+    {
+      "cutoff": 40000,
+      "color": [
+        0.5,
+        0.0,
+        0.64
       ]
     }
   ],
   "width": 2000,
-  "samples": 160000000,
+  "samples": 990000000,
   "norm_cutoff": 2.0,
   "output_path": "Output.png"
 }
