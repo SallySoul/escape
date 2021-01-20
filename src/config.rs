@@ -11,7 +11,7 @@ pub struct CutoffColor {
 pub struct RenderConfig {
     pub cutoffs: Vec<CutoffColor>,
     pub width: usize,
-    pub samples: usize,
+    pub unit_samples: usize,
     pub norm_cutoff: f64,
     pub output_path: PathBuf,
     pub less_than: bool,

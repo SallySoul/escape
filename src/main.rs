@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
-#![feature(clamp)]
+//#![feature(clamp)]
 
 use image::{Rgb, RgbImage};
 use nalgebra::Complex;
@@ -17,11 +17,11 @@ use crate::config::{CutoffColor, RenderConfig};
 use crate::error::EscapeError;
 use crate::grid::{CountGrid, NormalizedGrid};
 
-async fn run_config_async(config: Arc<RenderConfig>, worker_samples: usize) -> Vec<Arc<CountGrid>> {
-    run_config(&config, worker_samples)
+async fn run_config_async(config: Arc<RenderConfig>) -> Vec<Arc<CountGrid>> {
+    run_config(&config)
 }
 
-fn run_config(config: &RenderConfig, worker_samples: usize) -> Vec<Arc<CountGrid>> {
+fn run_config(config: &RenderConfig) -> Vec<Arc<CountGrid>> {
     let min = Complex::new(-2.0, -2.0);
     let mut result = vec![
         CountGrid::new(min, 4.0 / config.width as f64, config.width, config.width);
@@ -34,9 +34,9 @@ fn run_config(config: &RenderConfig, worker_samples: usize) -> Vec<Arc<CountGrid
     let max_iteration = config.cutoffs.last().unwrap().cutoff + 1;
     let norm_cutoff_sqr = config.norm_cutoff * config.norm_cutoff;
     let mut sequence_buffer = Vec::with_capacity(max_iteration);
-    for r in 0..worker_samples {
+    for r in 0..config.unit_samples {
         if r % 10000 == 0 {
-            println!("i: {}, {}%", r, (r as f64 / worker_samples as f64) * 100.0);
+            println!("i: {}, {}%", r, (r as f64 / config.unit_samples as f64) * 100.0);
         }
 
         let c = Complex::new(sample_range.sample(&mut rng), sample_range.sample(&mut rng));
@@ -142,9 +142,8 @@ async fn merge_results(
 
 async fn async_main(config: Arc<RenderConfig>, workers: usize) -> Result<(), EscapeError> {
     let mut futures = Vec::with_capacity(workers);
-    let x = config.samples / workers;
     for _ in 0..workers {
-        futures.push(tokio::spawn(run_config_async(config.clone(), x)));
+        futures.push(tokio::spawn(run_config_async(config.clone())));
     }
 
     println!("Futures Started");
