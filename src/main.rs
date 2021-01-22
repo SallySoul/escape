@@ -28,11 +28,10 @@ fn run_config(config: &RenderConfig, worker_samples: usize) -> Vec<Arc<CountGrid
         config.cutoffs.len()
     ];
 
-
     let sample_range = rand::distributions::Uniform::from(-2.0..2.0);
     let mut rng = rand::thread_rng();
 
-    let max_iteration = config.cutoffs.last().unwrap().cutoff;
+    let max_iteration = config.cutoffs.last().unwrap().cutoff + 1;
     let norm_cutoff_sqr = config.norm_cutoff * config.norm_cutoff;
     let mut sequence_buffer = Vec::with_capacity(max_iteration);
     for r in 0..worker_samples {
@@ -50,10 +49,21 @@ fn run_config(config: &RenderConfig, worker_samples: usize) -> Vec<Arc<CountGrid
             iteration += 1;
         }
 
-        for (i, cutoff) in config.cutoffs.iter().enumerate() {
-            if iteration <= cutoff.cutoff {
-                result[i].increment_samples(&sequence_buffer);
-                break;
+        if z.norm_sqr() > norm_cutoff_sqr {
+            if config.less_than {
+                for (i, cutoff) in config.cutoffs.iter().enumerate() {
+                    if iteration <= cutoff.cutoff {
+                        result[i].increment_samples(&sequence_buffer);
+                        break;
+                    }
+                }
+            } else {
+                for (i, cutoff) in config.cutoffs.iter().rev().enumerate() {
+                    if iteration >= cutoff.cutoff {
+                        result[i].increment_samples(&sequence_buffer);
+                        break;
+                    }
+                }
             }
         }
 
@@ -105,8 +115,10 @@ fn merge_grids(config: &RenderConfig, grids: Vec<Arc<CountGrid>>) -> CountGrid {
     result
 }
 
-
-async fn merge_results(config: Arc<RenderConfig>, results: Vec<Vec<Arc<CountGrid>>>) -> Vec<NormalizedGrid> {
+async fn merge_results(
+    config: Arc<RenderConfig>,
+    results: Vec<Vec<Arc<CountGrid>>>,
+) -> Vec<NormalizedGrid> {
     let cutoff_count = config.cutoffs.len();
     let mut tasks = Vec::with_capacity(cutoff_count);
     for cutoff_index in 0..cutoff_count {
@@ -128,7 +140,7 @@ async fn merge_results(config: Arc<RenderConfig>, results: Vec<Vec<Arc<CountGrid
     result
 }
 
-async fn async_main(config: Arc<RenderConfig>, workers: usize) -> Result<(), EscapeError>{
+async fn async_main(config: Arc<RenderConfig>, workers: usize) -> Result<(), EscapeError> {
     let mut futures = Vec::with_capacity(workers);
     let x = config.samples / workers;
     for _ in 0..workers {
@@ -169,13 +181,14 @@ struct CliOptions {
 
 fn main() -> Result<(), EscapeError> {
     let cli_options = CliOptions::from_args();
-    let config: Arc<RenderConfig> = Arc::new(serde_json::from_reader(std::fs::File::open(&cli_options.config)?)?);
+    let config: Arc<RenderConfig> = Arc::new(serde_json::from_reader(std::fs::File::open(
+        &cli_options.config,
+    )?)?);
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(cli_options.workers)
         .build()
         .unwrap();
-
 
     rt.block_on(async_main(config, cli_options.workers))?;
 

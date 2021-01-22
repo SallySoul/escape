@@ -14,4 +14,5 @@ pub struct RenderConfig {
     pub samples: usize,
     pub norm_cutoff: f64,
     pub output_path: PathBuf,
+    pub less_than: bool,
 }
