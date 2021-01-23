@@ -1,7 +1,7 @@
 {
   "cutoffs": [
 {
-      "cutoff": 60,
+      "cutoff": 10,
       "color": [
         0.2123,
         0.1,
@@ -9,7 +9,7 @@
       ]
 },
 {
-      "cutoff": 10000,
+      "cutoff": 20,
       "color": [
         0.1464,
         0.06323452,
@@ -17,7 +17,7 @@
       ]
 },
     {
-      "cutoff": 50000,
+      "cutoff": 30,
       "color": [
         0.363,
         0.241,
@@ -25,7 +25,7 @@
       ]
     },
    {
-      "cutoff": 100000,
+      "cutoff": 50,
       "color": [
         0.6045,
         0.567,
@@ -33,7 +33,7 @@
       ]
    },
    {
-      "cutoff": 500000,
+      "cutoff": 75,
       "color": [
         0.4534,
         0.753,
@@ -41,7 +41,7 @@
       ]
    },
 {
-      "cutoff": 1500000,
+      "cutoff": 100,
       "color": [
         1.0,
         1.0,
@@ -50,8 +50,8 @@
     }
   ],
   "width": 2000,
-  "samples": 10000000000,
+  "samples": 1000000000,
   "norm_cutoff": 2.0,
-  "output_path": "Large.png",
+  "output_path": "Spike.png",
   "less_than": true
 }
