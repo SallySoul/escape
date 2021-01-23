@@ -12,6 +12,7 @@ use structopt::StructOpt;
 mod config;
 mod error;
 mod grid;
+mod worker;
 
 use crate::config::{CutoffColor, RenderConfig};
 use crate::error::EscapeError;
@@ -36,7 +37,11 @@ fn run_config(config: &RenderConfig) -> Vec<Arc<CountGrid>> {
     let mut sequence_buffer = Vec::with_capacity(max_iteration);
     for r in 0..config.unit_samples {
         if r % 10000 == 0 {
-            println!("i: {}, {}%", r, (r as f64 / config.unit_samples as f64) * 100.0);
+            println!(
+                "i: {}, {}%",
+                r,
+                (r as f64 / config.unit_samples as f64) * 100.0
+            );
         }
 
         let c = Complex::new(sample_range.sample(&mut rng), sample_range.sample(&mut rng));
