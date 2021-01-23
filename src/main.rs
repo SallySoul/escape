@@ -13,6 +13,7 @@ mod config;
 mod error;
 mod grid;
 mod worker;
+mod view_config;
 
 use crate::config::{CutoffColor, RenderConfig};
 use crate::error::EscapeError;
