@@ -187,6 +187,7 @@ version = "0.1.0"
 dependencies = [
  "image",
  "nalgebra",
+ "num-traits",
  "rand 0.8.2",
  "serde",
  "serde_json",

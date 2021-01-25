@@ -14,11 +14,11 @@ mod error;
 mod grid;
 mod worker;
 mod view_config;
+mod types;
 
 use crate::config::{CutoffColor, RenderConfig};
 use crate::error::EscapeError;
-use crate::grid::{CountGrid, NormalizedGrid};
-
+/*
 async fn run_config_async(config: Arc<RenderConfig>) -> Vec<Arc<CountGrid>> {
     run_config(&config)
 }
@@ -171,6 +171,7 @@ async fn async_main(config: Arc<RenderConfig>, workers: usize) -> Result<(), Esc
 
     Ok(())
 }
+ */
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "escape")]
@@ -195,7 +196,7 @@ fn main() -> Result<(), EscapeError> {
         .build()
         .unwrap();
 
-    rt.block_on(async_main(config, cli_options.workers))?;
+    //rt.block_on(async_main(config, cli_options.workers))?;
 
     println!("Done!");
 
