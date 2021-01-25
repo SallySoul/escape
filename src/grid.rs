@@ -1,13 +1,13 @@
 use nalgebra::Complex;
 
 #[derive(Clone)]
-pub struct Grid<N: num_traits::Num> {
+pub struct Grid<N: num_traits::Num + Copy + Clone> {
     boxes: Vec<N>,
     width: usize,
     height: usize,
 }
 
-impl<N: num_traits::Num> Grid<N> {
+impl<N: num_traits::Num + Copy + Clone> Grid<N> {
     pub fn new(width: usize, height: usize) -> Grid<N> {
         Grid {
             boxes: vec![N::zero(); width * height],
@@ -25,7 +25,7 @@ impl<N: num_traits::Num> Grid<N> {
     }
 
     pub fn increment(&mut self, x: usize, y: usize) {
-        let temp = self.boxes[y * self.width + x] + 1;
+        let temp = self.boxes[y * self.width + x] + N::one();
         self.boxes[y * self.width + x] = temp;
     }
 }

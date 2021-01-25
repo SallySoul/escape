@@ -10,9 +10,11 @@ pub struct CutoffColor {
 #[derive(Serialize, Deserialize)]
 pub struct RenderConfig {
     pub cutoffs: Vec<CutoffColor>,
-    pub width: usize,
-    pub unit_samples: usize,
+
     pub norm_cutoff: f64,
+
+    pub sampling_instances: usize,
+    pub initial_sample_attempts: usize,
+
     pub output_path: PathBuf,
-    pub less_than: bool,
 }

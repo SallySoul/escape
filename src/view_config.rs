@@ -1,14 +1,16 @@
+use serde::{Deserialize, Serialize};
+
 use crate::types::Complex;
 
 pub struct ViewConfig {
-    center: Complex,
-    zoom: f64,
-    width: i32,
-    height: i32,
+    pub center: Complex,
+    pub zoom: f64,
+    pub width: usize,
+    pub height: usize,
 }
 
 impl ViewConfig {
-    pub fn new(center: Complex, zoom: f64, width: i32, height: i32) -> ViewConfig {
+    pub fn new(center: Complex, zoom: f64, width: usize, height: usize) -> ViewConfig {
         ViewConfig {
             center,
             zoom,
@@ -33,7 +35,7 @@ impl ViewConfig {
 }
 
 #[cfg(test)]
-mod tests {
+mod view_config_tests {
     use super::*;
 
     #[test]
