@@ -12,9 +12,9 @@ use structopt::StructOpt;
 mod config;
 mod error;
 mod grid;
-mod worker;
-mod view_config;
 mod types;
+mod view_config;
+mod worker;
 
 use crate::config::{CutoffColor, RenderConfig};
 use crate::error::EscapeError;
@@ -187,11 +187,11 @@ struct CliOptions {
 
 fn main() -> Result<(), EscapeError> {
     let cli_options = CliOptions::from_args();
-    let config: Arc<RenderConfig> = Arc::new(serde_json::from_reader(std::fs::File::open(
+    let _config: Arc<RenderConfig> = Arc::new(serde_json::from_reader(std::fs::File::open(
         &cli_options.config,
     )?)?);
 
-    let rt = tokio::runtime::Builder::new_multi_thread()
+    let _rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(cli_options.workers)
         .build()
         .unwrap();

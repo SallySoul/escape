@@ -2,11 +2,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::Complex;
 
+#[derive(Serialize, Deserialize, Copy, Clone)]
 pub struct ViewConfig {
     pub center: Complex,
     pub zoom: f64,
     pub width: usize,
     pub height: usize,
+    width_i32: i32,
+    height_i32: i32,
 }
 
 impl ViewConfig {
@@ -15,7 +18,9 @@ impl ViewConfig {
             center,
             zoom,
             width,
-            height
+            height,
+            width_i32: width as i32,
+            height_i32: height as i32,
         }
     }
 
@@ -26,7 +31,8 @@ impl ViewConfig {
         let x_signed = (x_fp * self.width as f64) as i32;
         let y_signed = (y_fp * self.height as f64) as i32;
 
-        if x_signed >= 0 && y_signed >= 0 && x_signed < self.width && y_signed < self.height {
+        if x_signed >= 0 && y_signed >= 0 && x_signed < self.width_i32 && y_signed < self.height_i32
+        {
             Some((x_signed as usize, y_signed as usize))
         } else {
             None
@@ -40,12 +46,12 @@ mod view_config_tests {
 
     #[test]
     fn test_project_1() {
-        let config = ViewConfig {
-            center: Complex::new(0.0, 0.0),
-            zoom: 1.0,
-            width: 500,
-            height: 400,
-        };
+        let config = ViewConfig::new(
+            Complex::new(0.0, 0.0),
+            1.0,
+            500,
+            400,
+        );
 
         let pixel_eps = 0.00001;
 
@@ -71,12 +77,12 @@ mod view_config_tests {
 
     #[test]
     fn test_project_2() {
-        let config = ViewConfig {
-            center: Complex::new(-1.0, 2.0),
-            zoom: 2.0,
-            width: 500,
-            height: 400,
-        };
+        let config = ViewConfig::new(
+            Complex::new(-1.0, 2.0),
+            2.0,
+            500,
+            400,
+        );
 
         let pixel_eps = 0.00001;
 
