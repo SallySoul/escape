@@ -13,15 +13,21 @@ pub struct RenderConfig {
 
     pub norm_cutoff: f64,
 
-    pub sampling_instances: usize,
+    pub metro_instances: usize,
 
-    pub initial_sample_attempts: usize,
-
-    /// Specifies how many samples the warm up will take
+    /// Specifies how many samples the warm up will take.
+    /// Default value is 10k
     #[serde(default = "RenderConfig::default_warm_up_samples")]
     pub warm_up_samples: usize,
 
-    pub 
+    /// For each new sample, specify the probability that a random point is chosen
+    /// as opposed to perturbing the previous sample.
+    /// Default value is 0.2
+    #[serde(default = "RenderConfig::default_random_sample_prob")]
+    pub random_sample_prob: f64,
+
+    /// How many samples to take from a metropolis hastings run
+    pub samples: usize,
 
     pub output_path: PathBuf,
 }
@@ -29,5 +35,9 @@ pub struct RenderConfig {
 impl RenderConfig {
     fn default_warm_up_samples() -> usize {
         10000
+    }
+
+    fn default_random_sample_prob() -> f64 {
+        0.2
     }
 }

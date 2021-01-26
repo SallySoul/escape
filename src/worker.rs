@@ -5,6 +5,18 @@ use crate::config::RenderConfig;
 use crate::types::{Complex, CountGrid};
 use crate::view_config::ViewConfig;
 
+fn radius_sample(radius: f64) -> Complex {
+    let mut rng = rand::thread_rng();
+    let range = rand::distributions::Uniform::from(-radius..radius);
+    let rad_sqr = radius * radius;
+    loop {
+        let c = Complex::new(range.sample(&mut rng), range.sample(&mut rng));
+        if c.norm_sqr() < rad_sqr {
+            return c;
+        }
+    }
+}
+
 struct FullRandomSample {
     re_range: rand::distributions::Uniform<f64>,
     im_range: rand::distributions::Uniform<f64>,
@@ -27,9 +39,9 @@ impl FullRandomSample {
 
     fn sample(&self) -> Complex {
         loop {
-            let c = self.sample();
+            let c = self.sample_square();
             if c.norm_sqr() <= 4.0 {
-                return c
+                return c;
             }
         }
     }
@@ -56,17 +68,17 @@ mod full_random_sample_tests {
 
 fn random_prob() -> f64 {
     let mut rng = rand::thread_rng();
-    rand::distributions::Uniform::from(0..1.0).sample(&mut rng)
+    rand::distributions::Uniform::from(0.0..1.0).sample(&mut rng)
 }
 
 struct WorkerState {
     render_config: RenderConfig,
     view_config: ViewConfig,
     grids: Vec<CountGrid>,
-    sampling_instances: Vec<SamplingInstance>,
     full_random: FullRandomSample,
     norm_cutoff_sqr: f64,
     iteration_cutoff: usize,
+    iteration_cutoff_f64: f64,
     orbit_buffer: Vec<Complex>,
 }
 
@@ -80,10 +92,10 @@ impl WorkerState {
                 CountGrid::new(view_config.width, view_config.height);
                 render_config.cutoffs.len()
             ],
-            sampling_instances: Vec::new(),
             full_random: FullRandomSample::new(),
             norm_cutoff_sqr: render_config.norm_cutoff * render_config.norm_cutoff,
             iteration_cutoff: cutoff,
+            iteration_cutoff_f64: cutoff as f64,
             orbit_buffer: Vec::with_capacity(cutoff),
         }
     }
@@ -159,18 +171,22 @@ impl WorkerState {
     ///
     /// This is a port of Alexander Boswell's FindInitialSample function.
     /// Per the comment in his code, better than random sampling for higher zooms
-    ///
     fn find_initial_sample(&mut self) -> Complex {
         return self.find_initial_sample_r(&Complex::new(0.0, 0.0), 2.0);
     }
 
-    fn find_initial_sample_r(&mut self, seed_r: &Complex, rad: f64) -> Complex {
+    /// Here's the gist
+    /// as this function recurses, it also narrows the spatial scope of its search
+    /// In general, we are looking for a point whose orbit intersects the view
+    /// Failing that, we keep track of sample whose orbit has gotten the closest
+    /// For each search scope / radius / recursion we try for n times to generate a random perturbation of the seed point that either intersects the view of see if it gets closer
+    fn find_initial_sample_r(&mut self, seed_r: &Complex, radius: f64) -> Complex {
         let mut closest_distance = std::f64::MAX;
         let mut closest_sample = Complex::new(0.0, 0.0);
 
         for _ in 0..200 {
             // Generate sample for this iteration
-            let sample = self.full_random.sample() + seed_r;
+            let sample = seed_r + radius_sample(radius);
 
             // If sample doesn't escape than its a dud
             let sample_escapes = self.evaluate(&sample);
@@ -195,36 +211,117 @@ impl WorkerState {
             }
         }
 
-        return self.find_initial_sample_r(&closest_sample, rad / 2.0);
+        return self.find_initial_sample_r(&closest_sample, radius / 2.0);
     }
 
+    /// Sampling with the Metropolis-Hastings algorithm is based on mutating a "good" sample
+    /// Some of the time we want to perturb the last good sample
+    /// Other times we want to try a complelety new point
     fn mutate(&self, c: &Complex) -> Complex {
+        if random_prob() < self.render_config.random_sample_prob {
+            self.full_random.sample()
+        } else {
+            let mut result = c.clone();
+            let r1 = 1.0 / self.view_config.zoom * 0.0001;
+            let r2 = 1.0 / self.view_config.zoom * 0.1;
+            let phi = random_prob() * 2.0 * std::f64::consts::PI;
+            let r = r2 * (-(r2 / r1).ln() * random_prob()).exp();
 
+            result.re += r * phi.cos();
+            result.im += r * phi.sin();
 
-        Complex::new(0.0, 0.0)
+            result
+        }
+    }
+
+    fn transition_probability(&self, orbit_len_1: usize, orbit_len_2: usize) -> f64 {
+        let ol1 = orbit_len_1 as f64;
+        let ol2 = orbit_len_2 as f64;
+
+        let numerator = 1.0 - ((self.iteration_cutoff_f64 - ol1) / ol1);
+        let denominator = 1.0 - ((self.iteration_cutoff_f64 - ol2) / ol2);
+
+        numerator / denominator
     }
 
     fn buddhabrot(&mut self) {
+        println!("*** Starting Run");
+        // TODO these need to be setup properly
         let mut z = self.find_initial_sample();
-        let mut _z_contrib = 0.0;
+        println!("*** Found Initial Sample");
+        let mut z_orbit_len = self.orbit_buffer.len();
+        let z_orbit_intersections = self.orbit_intersections();
+        let mut z_contrib = self.contribution(z_orbit_intersections);
 
+        let mut accepted_samples_warmup = 0;
+        let mut accepted_samples = 0;
+        let mut rejected_samples_warmup = 0;
+        let mut rejected_samples = 0;
+
+        println!("Starting WarmUp");
         for _ in 0..self.render_config.warm_up_samples {
             let mutation = self.mutate(&z);
             self.evaluate(&mutation);
+            let mutation_orbit_len = self.orbit_buffer.len();
             let intersection_count = self.orbit_intersections();
 
             // If the mutation doesn't intersect at all, it's a dud
             if intersection_count == 0 {
-                continue
+                continue;
             }
 
-            let mutation_contribution = self.contribution(intersection_count);
+            let mutation_contrib = self.contribution(intersection_count);
 
-            let t1 = self.transition_prob();
-            let t2 = self.transition_prob();
-            let alpha = std::min(1.0,  )
+            let t1 = self.transition_probability(mutation_orbit_len, z_orbit_len);
+            let t2 = self.transition_probability(z_orbit_len, mutation_orbit_len);
+            let alpha =
+                (((mutation_contrib * t1).ln() - (z_contrib * t2).ln()).exp()).clamp(0.0, 1.0);
 
+            if alpha > random_prob() {
+                z = mutation;
+                z_contrib = mutation_contrib;
+                z_orbit_len = mutation_orbit_len;
+                accepted_samples_warmup += 1;
+            } else {
+                rejected_samples_warmup += 1;
+            }
         }
+
+        println!(
+            "*** Warm up done! accepted: {}, rejected: {}",
+            accepted_samples_warmup, rejected_samples_warmup
+        );
+        for _ in 0..self.render_config.samples {
+            let mutation = self.mutate(&z);
+            self.evaluate(&mutation);
+            let mutation_orbit_len = self.orbit_buffer.len();
+            let intersection_count = self.record_orbit();
+
+            // If the mutation doesn't intersect at all, it's a dud
+            if intersection_count == 0 {
+                continue;
+            }
+
+            let mutation_contrib = self.contribution(intersection_count);
+
+            let t1 = self.transition_probability(mutation_orbit_len, z_orbit_len);
+            let t2 = self.transition_probability(z_orbit_len, mutation_orbit_len);
+            let alpha =
+                (((mutation_contrib * t1).ln() - (z_contrib * t2).ln()).exp()).clamp(0.0, 1.0);
+
+            if alpha > random_prob() {
+                z = mutation;
+                z_contrib = mutation_contrib;
+                z_orbit_len = mutation_orbit_len;
+                accepted_samples += 1;
+            } else {
+                rejected_samples += 1;
+            }
+        }
+        println!(
+            "*** Done! accepted: {}, rejected: {}",
+            accepted_samples, rejected_samples
+        );
     }
 }
 

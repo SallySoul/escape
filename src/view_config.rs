@@ -46,12 +46,7 @@ mod view_config_tests {
 
     #[test]
     fn test_project_1() {
-        let config = ViewConfig::new(
-            Complex::new(0.0, 0.0),
-            1.0,
-            500,
-            400,
-        );
+        let config = ViewConfig::new(Complex::new(0.0, 0.0), 1.0, 500, 400);
 
         let pixel_eps = 0.00001;
 
@@ -77,12 +72,7 @@ mod view_config_tests {
 
     #[test]
     fn test_project_2() {
-        let config = ViewConfig::new(
-            Complex::new(-1.0, 2.0),
-            2.0,
-            500,
-            400,
-        );
+        let config = ViewConfig::new(Complex::new(-1.0, 2.0), 2.0, 500, 400);
 
         let pixel_eps = 0.00001;
 
