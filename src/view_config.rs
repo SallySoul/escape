@@ -8,8 +8,6 @@ pub struct ViewConfig {
     pub zoom: f64,
     pub width: usize,
     pub height: usize,
-    width_i32: i32,
-    height_i32: i32,
 }
 
 impl ViewConfig {
@@ -19,8 +17,6 @@ impl ViewConfig {
             zoom,
             width,
             height,
-            width_i32: width as i32,
-            height_i32: height as i32,
         }
     }
 
@@ -31,7 +27,7 @@ impl ViewConfig {
         let x_signed = (x_fp * self.width as f64) as i32;
         let y_signed = (y_fp * self.height as f64) as i32;
 
-        if x_signed >= 0 && y_signed >= 0 && x_signed < self.width_i32 && y_signed < self.height_i32
+        if x_signed >= 0 && y_signed >= 0 && x_signed < self.width as i32 && y_signed < self.height as i32
         {
             Some((x_signed as usize, y_signed as usize))
         } else {

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use crate::view_config::ViewConfig;
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct CutoffColor {
@@ -40,4 +41,10 @@ impl RenderConfig {
     fn default_random_sample_prob() -> f64 {
         0.2
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    pub render_config: RenderConfig,
+    pub view_config: ViewConfig,
 }

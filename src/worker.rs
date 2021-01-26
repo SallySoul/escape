@@ -244,7 +244,7 @@ impl WorkerState {
         numerator / denominator
     }
 
-    fn buddhabrot(&mut self) {
+    fn run_metro_instance(&mut self) {
         println!("*** Starting Run");
         // TODO these need to be setup properly
         let mut z = self.find_initial_sample();
@@ -322,6 +322,13 @@ impl WorkerState {
             "*** Done! accepted: {}, rejected: {}",
             accepted_samples, rejected_samples
         );
+    }
+
+    fn run_worker(&self) {
+        for i in 0..self.render_config.metro_instances {
+            println!("Running metro instance {}", i);
+            self.run_metro_instance();
+        }
     }
 }
 

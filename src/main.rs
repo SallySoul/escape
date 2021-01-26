@@ -16,7 +16,7 @@ mod types;
 mod view_config;
 mod worker;
 
-use crate::config::{CutoffColor, RenderConfig};
+use crate::config::{CutoffColor, RenderConfig, Config};
 use crate::error::EscapeError;
 /*
 async fn run_config_async(config: Arc<RenderConfig>) -> Vec<Arc<CountGrid>> {
@@ -187,7 +187,7 @@ struct CliOptions {
 
 fn main() -> Result<(), EscapeError> {
     let cli_options = CliOptions::from_args();
-    let _config: Arc<RenderConfig> = Arc::new(serde_json::from_reader(std::fs::File::open(
+    let _config: Arc<Config> = Arc::new(serde_json::from_reader(std::fs::File::open(
         &cli_options.config,
     )?)?);
 
