@@ -11,23 +11,31 @@
     {
       "cutoff": 20000,
       "color": [
-        0.2,
+        0.7,
         0.6,
-        0.3
+        0.5
       ]
     },
     {
-      "cutoff": 40000,
+      "cutoff": 30000,
       "color": [
-        0.5,
-        0.0,
-        0.64
+        0.9,
+        0.8,
+        0.74
       ]
     }
   ],
-  "width": 2000,
-  "samples": 99000000,
-  "norm_cutoff": 2.0,
-  "output_path": "Output.png",
-  "less_than": false
+  "view": {
+    "width": 400,
+    "height": 400,
+    "zoom": 0.25,
+    "center": [
+      0.0,
+      0.0
+    ]
+  },
+  "metro_instances": 5000,
+  "samples": 1500,
+  "warm_up_samples": 1000,
+  "output_path": "output/Output_6.png"
 }

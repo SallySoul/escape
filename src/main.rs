@@ -16,7 +16,8 @@ mod types;
 mod view_config;
 mod worker;
 
-use crate::config::{CutoffColor, RenderConfig, Config};
+use crate::types::{NormalizedGrid};
+use crate::config::{CutoffColor, RenderConfig};
 use crate::error::EscapeError;
 /*
 async fn run_config_async(config: Arc<RenderConfig>) -> Vec<Arc<CountGrid>> {
@@ -79,31 +80,7 @@ fn run_config(config: &RenderConfig) -> Vec<Arc<CountGrid>> {
     result.drain(0..).map(|grid| Arc::new(grid)).collect()
 }
 
-fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
-    let mut result = RgbImage::new(config.width as u32, config.width as u32);
-    for x in 0..config.width {
-        for y in 0..config.width {
-            let mut rgb_fp = [0.0, 0.0, 0.0];
-            for (cutoff_index, config) in config.cutoffs.iter().enumerate() {
-                for color in 0..3 {
-                    rgb_fp[color] += grids[cutoff_index].value(x, y) * config.color[color];
-                }
-            }
 
-            let rgb = {
-                let mut rgb = [0, 0, 0];
-                for color in 0..3 {
-                    rgb[color] = (rgb_fp[color].clamp(0.0, 1.0) * 255.0) as u8;
-                }
-                rgb
-            };
-
-            result.put_pixel(x as u32, y as u32, Rgb(rgb));
-        }
-    }
-
-    result
-}
 
 fn merge_grids(config: &RenderConfig, grids: Vec<Arc<CountGrid>>) -> CountGrid {
     let min = Complex::new(-2.0, -2.0);
@@ -173,6 +150,32 @@ async fn async_main(config: Arc<RenderConfig>, workers: usize) -> Result<(), Esc
 }
  */
 
+fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
+    let mut result = RgbImage::new(config.view.width as u32, config.view.height as u32);
+    for x in 0..config.view.width {
+        for y in 0..config.view.height {
+            let mut rgb_fp = [0.0, 0.0, 0.0];
+            for (cutoff_index, config) in config.cutoffs.iter().enumerate() {
+                for color in 0..3 {
+                    rgb_fp[color] += grids[cutoff_index].value(x, y) * config.color[color];
+                }
+            }
+
+            let rgb = {
+                let mut rgb = [0, 0, 0];
+                for color in 0..3 {
+                    rgb[color] = (rgb_fp[color].clamp(0.0, 1.0) * 255.0) as u8;
+                }
+                rgb
+            };
+
+            result.put_pixel(x as u32, y as u32, Rgb(rgb));
+        }
+    }
+
+    result
+}
+
 #[derive(StructOpt, Debug)]
 #[structopt(name = "escape")]
 struct CliOptions {
@@ -187,17 +190,23 @@ struct CliOptions {
 
 fn main() -> Result<(), EscapeError> {
     let cli_options = CliOptions::from_args();
-    let _config: Arc<Config> = Arc::new(serde_json::from_reader(std::fs::File::open(
+    let config: Arc<RenderConfig> = Arc::new(serde_json::from_reader(std::fs::File::open(
         &cli_options.config,
     )?)?);
 
+    let mut worker = worker::WorkerState::new(&config);
+    worker.run_worker();
+
+    let merged_grids = worker.grids.iter().map(|g| g.to_normalized_grid()).collect::<Vec<NormalizedGrid>>();
+    color_grids(&config, &merged_grids).save(&config.output_path)?;
+/*
     let _rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(cli_options.workers)
         .build()
         .unwrap();
 
     //rt.block_on(async_main(config, cli_options.workers))?;
-
+*/
     println!("Done!");
 
     Ok(())

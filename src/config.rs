@@ -12,7 +12,7 @@ pub struct CutoffColor {
 pub struct RenderConfig {
     pub cutoffs: Vec<CutoffColor>,
 
-    pub norm_cutoff: f64,
+    pub view: ViewConfig,
 
     pub metro_instances: usize,
 
@@ -27,13 +27,28 @@ pub struct RenderConfig {
     #[serde(default = "RenderConfig::default_random_sample_prob")]
     pub random_sample_prob: f64,
 
+    /// We the norm at which we decide that an orbit has escaped.
+    /// Default value is 2.0
+    #[serde(default = "RenderConfig::default_norm_cutoff")]
+    pub norm_cutoff: f64,
+
     /// How many samples to take from a metropolis hastings run
+    /// Default value is 100000
+    #[serde(default = "RenderConfig::default_samples")]
     pub samples: usize,
 
     pub output_path: PathBuf,
 }
 
 impl RenderConfig {
+    fn default_samples() -> usize {
+        100000
+    }
+
+    fn default_norm_cutoff() -> f64 {
+        2.0
+    }
+
     fn default_warm_up_samples() -> usize {
         10000
     }
@@ -41,10 +56,4 @@ impl RenderConfig {
     fn default_random_sample_prob() -> f64 {
         0.2
     }
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct Config {
-    pub render_config: RenderConfig,
-    pub view_config: ViewConfig,
 }
