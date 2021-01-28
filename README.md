@@ -12,6 +12,18 @@ Escape is a configurable renderer for the buddhabrot fractal.
 * Additionally, conjugate orbits used to inform sampling
 * Multi-threaded
 
+## Profiling
+
+Followed [this article](https://gendignoux.com/blog/2019/11/09/profiling-rust-docker-perf.html), but its quite short if you ignore the docker bits.
+
+```
+cargo clean
+RUSTFLAGS='-C force-frame-pointers=y' cargo build --release
+
+perf record -g target/release/escape -- -c configs/config_sample.json -w 1
+perf report -g graph,0.5,caller
+```
+
 ## Resources / Further Reading
 
 ### [The Buddhabrot](http://www.steckles.com/buddha/) by Alexander Boswell

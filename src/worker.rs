@@ -87,10 +87,7 @@ impl WorkerState {
         let view = render_config.view;
         WorkerState {
             render_config: render_config.clone(),
-            grids: vec![
-                CountGrid::new(view.width, view.height);
-                render_config.cutoffs.len()
-            ],
+            grids: vec![CountGrid::new(view.width, view.height); render_config.cutoffs.len()],
             full_random: FullRandomSample::new(),
             norm_cutoff_sqr: render_config.norm_cutoff * render_config.norm_cutoff,
             iteration_cutoff: cutoff,
@@ -248,10 +245,10 @@ impl WorkerState {
     }
 
     fn run_metro_instance(&mut self) {
-        println!("*** Starting Run");
+        //println!("*** Starting Run");
         // TODO these need to be setup properly
         let mut z = self.find_initial_sample();
-        println!("*** Found Initial Sample");
+        //println!("*** Found Initial Sample");
         let mut z_orbit_len = self.orbit_buffer.len();
         let z_orbit_intersections = self.orbit_intersections();
         let mut z_contrib = self.contribution(z_orbit_intersections);
@@ -262,7 +259,7 @@ impl WorkerState {
         let mut rejected_samples = 0;
         let mut outside_samples = 0;
 
-        println!("*** Starting WarmUp");
+        //println!("*** Starting WarmUp");
         for _ in 0..self.render_config.warm_up_samples {
             let mutation = self.mutate(&z);
             self.evaluate(&mutation);
@@ -290,11 +287,12 @@ impl WorkerState {
                 rejected_samples_warmup += 1;
             }
         }
-
+        /*
         println!(
             "*** Warm up done! accepted: {}, rejected: {}",
             accepted_samples_warmup, rejected_samples_warmup
         );
+        */
         for _ in 0..self.render_config.samples {
             let mutation = self.mutate(&z);
             self.evaluate(&mutation);
@@ -322,15 +320,17 @@ impl WorkerState {
                 rejected_samples += 1;
             }
         }
+        /*
         println!(
             "*** Done! accepted: {}, rejected: {}",
             accepted_samples, rejected_samples
         );
+        */
     }
 
     pub fn run_worker(&mut self) {
         for i in 0..self.render_config.metro_instances {
-            println!("Running metro instance {}", i);
+            //println!("Running metro instance {}", i);
             self.run_metro_instance();
         }
     }

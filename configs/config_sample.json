@@ -1,41 +1,40 @@
 {
   "cutoffs": [
     {
-      "cutoff": 10000,
-      "color": [
-        0.3,
-        0.3,
-        0.5
-      ]
-    },
-    {
-      "cutoff": 20000,
-      "color": [
-        0.7,
-        0.6,
-        0.5
-      ]
-    },
-    {
       "cutoff": 30000,
       "color": [
-        0.9,
-        0.8,
-        0.74
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "cutoff": 50000,
+      "color": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "cutoff": 70000,
+      "color": [
+        0.0,
+        0.0,
+        1.0
       ]
     }
   ],
   "view": {
     "width": 400,
     "height": 400,
-    "zoom": 0.25,
+    "zoom": 0.70,
     "center": [
-      0.0,
-      0.0
+      -0.657560793,
+      0.467732884
     ]
   },
-  "metro_instances": 5000,
-  "samples": 1500,
-  "warm_up_samples": 1000,
-  "output_path": "output/Output_6.png"
+  "metro_instances": 700,
+  "samples": 1000,
+  "warm_up_samples": 2000
 }

@@ -15,4 +15,4 @@ pub enum EscapeError {
     Json(#[from] serde_json::error::Error),
 }
 
-type EscapeResult = Result<(), EscapeError>;
+pub type EscapeResult = Result<(), EscapeError>;

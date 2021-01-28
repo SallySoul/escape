@@ -1,6 +1,6 @@
+use crate::view_config::ViewConfig;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use crate::view_config::ViewConfig;
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct CutoffColor {
@@ -36,8 +36,6 @@ pub struct RenderConfig {
     /// Default value is 100000
     #[serde(default = "RenderConfig::default_samples")]
     pub samples: usize,
-
-    pub output_path: PathBuf,
 }
 
 impl RenderConfig {
