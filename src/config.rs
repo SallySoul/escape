@@ -14,8 +14,6 @@ pub struct RenderConfig {
 
     pub view: ViewConfig,
 
-    pub metro_instances: usize,
-
     /// Depth Limit for the initial samples search
     /// Default value is 500
     #[serde(default = "RenderConfig::default_initial_search_depth")]

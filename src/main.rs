@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use structopt::StructOpt;
 
+mod cli_options;
+mod comptroller;
 mod config;
 mod error;
 mod grid;
@@ -20,6 +22,7 @@ mod worker;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 
+use crate::cli_options::CliOptions;
 use crate::config::{CutoffColor, RenderConfig};
 use crate::error::{EscapeError, EscapeResult};
 use crate::types::CountGrid;
@@ -108,20 +111,20 @@ async fn run_worker(mut state_arc: Arc<WorkerState>) {
 
 async fn async_main(
     config: Arc<RenderConfig>,
-    workers: usize,
-    store_result: &Option<PathBuf>,
-    output: &Path,
+    cli_options: &CliOptions,
 ) -> Result<(), EscapeError> {
-    let mut worker_states = Vec::with_capacity(workers);
-    let mut futures = Vec::with_capacity(workers);
-    for i in 0..workers {
-        worker_states.push(Arc::new(WorkerState::new(&config)));
+    let c = comptroller::Comptroller::new(&cli_options).await;
+
+    let mut worker_states = Vec::with_capacity(cli_options.workers);
+    let mut futures = Vec::with_capacity(cli_options.workers);
+    for i in 0..cli_options.workers {
+        worker_states.push(Arc::new(WorkerState::new(&config, c.clone())));
         futures.push(tokio::spawn(run_worker(worker_states[i].clone())));
     }
 
     println!("Futures Started");
 
-    let mut results = Vec::with_capacity(workers);
+    let mut results = Vec::with_capacity(cli_options.workers);
     for w in futures {
         results.push(w.await.unwrap());
     }
@@ -133,14 +136,14 @@ async fn async_main(
         results.push(&w.grids);
     }
     let merged_grids = merge_results(config.clone(), &results).await;
-    if let Some(output) = store_result {
-        PartialResult::to_file(&config, &merged_grids, output)?;
+    if let Some(output) = &cli_options.store_result {
+        PartialResult::to_file(&config, &merged_grids, &cli_options.output)?;
     }
 
     println!("Done Merging");
-    color_grids(&config, &merged_grids).save(output)?;
+    color_grids(&config, &merged_grids).save(&cli_options.output)?;
 
-    println!("Done writing file, {}", output.display());
+    println!("Done writing file, {}", cli_options.output.display());
 
     Ok(())
 }
@@ -174,47 +177,20 @@ fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
     result
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "escape")]
-struct CliOptions {
-    /// Path to the config file
-    #[structopt(short, long, parse(from_os_str))]
-    config: Option<PathBuf>,
-
-    /// Path to the partial result file
-    #[structopt(short, long, parse(from_os_str))]
-    partial_result: Option<PathBuf>,
-
-    /// Path to store partial result
-    #[structopt(short, long, parse(from_os_str))]
-    store_result: Option<PathBuf>,
-
-    /// Path to store partial image
-    #[structopt(short, long, parse(from_os_str))]
-    output: PathBuf,
-
-    /// The number of worker threads to spawn (more threads may be used)
-    #[structopt(short, long)]
-    workers: usize,
-}
-
 fn main() -> Result<(), EscapeError> {
     let cli_options = CliOptions::from_args();
 
+    // Note that we add one extra thread for timers / signal handlers
     let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(cli_options.workers)
+        .worker_threads(cli_options.workers + 1)
+        .enable_all()
         .build()
         .unwrap();
 
     if let Some(config_path) = &cli_options.config {
         let config: Arc<RenderConfig> =
             Arc::new(serde_json::from_reader(std::fs::File::open(config_path)?)?);
-        rt.block_on(async_main(
-            config,
-            cli_options.workers,
-            &cli_options.store_result,
-            &cli_options.output,
-        ))?;
+        rt.block_on(async_main(config, &cli_options))?;
     } else {
         println!("Loading stored Result");
         let (config, grids) = PartialResult::from_file(&cli_options.partial_result.unwrap())?;

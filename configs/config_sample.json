@@ -34,7 +34,7 @@
       0.467732884
     ]
   },
-  "metro_instances": 700,
-  "samples": 1000,
-  "warm_up_samples": 2000
+  "metro_instances": 100,
+  "samples": 100,
+  "warm_up_samples": 200
 }

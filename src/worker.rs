@@ -1,6 +1,7 @@
 use rand::distributions::Distribution;
 use std::sync::Arc;
 
+use crate::comptroller::ARComptroller;
 use crate::config::RenderConfig;
 use crate::types::{Complex, CountGrid};
 use crate::view_config::ViewConfig;
@@ -79,10 +80,11 @@ pub struct WorkerState {
     iteration_cutoff: usize,
     iteration_cutoff_f64: f64,
     orbit_buffer: Vec<Complex>,
+    comptroller: ARComptroller,
 }
 
 impl WorkerState {
-    pub fn new(render_config: &RenderConfig) -> WorkerState {
+    pub fn new(render_config: &RenderConfig, comptroller: ARComptroller) -> WorkerState {
         let cutoff = render_config.cutoffs.last().unwrap().cutoff;
         let view = render_config.view;
         WorkerState {
@@ -93,6 +95,7 @@ impl WorkerState {
             iteration_cutoff: cutoff,
             iteration_cutoff_f64: cutoff as f64,
             orbit_buffer: Vec::with_capacity(cutoff),
+            comptroller,
         }
     }
 
@@ -178,7 +181,12 @@ impl WorkerState {
     /// In general, we are looking for a point whose orbit intersects the view
     /// Failing that, we keep track of sample whose orbit has gotten the closest
     /// For each search scope / radius / recursion we try for n times to generate a random perturbation of the seed point that either intersects the view of see if it gets closer
-    fn find_initial_sample_r(&mut self, seed_r: &Complex, radius: f64, depth: usize) -> Option<Complex> {
+    fn find_initial_sample_r(
+        &mut self,
+        seed_r: &Complex,
+        radius: f64,
+        depth: usize,
+    ) -> Option<Complex> {
         if depth > self.render_config.initial_search_depth {
             return None;
         }
@@ -304,7 +312,14 @@ impl WorkerState {
             accepted_samples_warmup, rejected_samples_warmup
         );
         */
-        for _ in 0..self.render_config.samples {
+        for s in 0..self.render_config.samples {
+            if s % 5000 == 0 {
+                if self.stop() {
+                    println!("In sampling stop");
+                    break;
+                }
+            }
+
             let mutation = self.mutate(&z);
             self.evaluate(&mutation);
             let mutation_orbit_len = self.orbit_buffer.len();
@@ -339,9 +354,12 @@ impl WorkerState {
         */
     }
 
+    fn stop(&self) -> bool {
+        self.comptroller.read().unwrap().stop()
+    }
+
     pub fn run_worker(&mut self) {
-        for i in 0..self.render_config.metro_instances {
-            //println!("Running metro instance {}", i);
+        while !self.stop() {
             self.run_metro_instance();
         }
     }
