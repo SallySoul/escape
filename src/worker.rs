@@ -169,8 +169,8 @@ impl WorkerState {
     ///
     /// This is a port of Alexander Boswell's FindInitialSample function.
     /// Per the comment in his code, better than random sampling for higher zooms
-    fn find_initial_sample(&mut self) -> Complex {
-        return self.find_initial_sample_r(&Complex::new(0.0, 0.0), 2.0);
+    fn find_initial_sample(&mut self) -> Option<Complex> {
+        return self.find_initial_sample_r(&Complex::new(0.0, 0.0), 2.0, 0);
     }
 
     /// Here's the gist
@@ -178,7 +178,11 @@ impl WorkerState {
     /// In general, we are looking for a point whose orbit intersects the view
     /// Failing that, we keep track of sample whose orbit has gotten the closest
     /// For each search scope / radius / recursion we try for n times to generate a random perturbation of the seed point that either intersects the view of see if it gets closer
-    fn find_initial_sample_r(&mut self, seed_r: &Complex, radius: f64) -> Complex {
+    fn find_initial_sample_r(&mut self, seed_r: &Complex, radius: f64, depth: usize) -> Option<Complex> {
+        if depth > self.render_config.initial_search_depth {
+            return None;
+        }
+
         let view = self.render_config.view;
         let mut closest_distance = std::f64::MAX;
         let mut closest_sample = Complex::new(0.0, 0.0);
@@ -196,7 +200,7 @@ impl WorkerState {
             // If sample's orbit intersects view then we're done
             let intersection_count = self.orbit_intersections();
             if intersection_count > 0 {
-                return sample;
+                return Some(sample);
             }
 
             // Otherwise, lets keep track of the sample that produced an orbit with an
@@ -210,7 +214,7 @@ impl WorkerState {
             }
         }
 
-        return self.find_initial_sample_r(&closest_sample, radius / 2.0);
+        return self.find_initial_sample_r(&closest_sample, radius / 2.0, depth + 1);
     }
 
     /// Sampling with the Metropolis-Hastings algorithm is based on mutating a "good" sample
@@ -247,7 +251,14 @@ impl WorkerState {
     fn run_metro_instance(&mut self) {
         //println!("*** Starting Run");
         // TODO these need to be setup properly
-        let mut z = self.find_initial_sample();
+        let mut z = match self.find_initial_sample() {
+            Some(z) => z,
+            None => {
+                println!("Failed to find initial sample");
+                return;
+            }
+        };
+
         //println!("*** Found Initial Sample");
         let mut z_orbit_len = self.orbit_buffer.len();
         let z_orbit_intersections = self.orbit_intersections();

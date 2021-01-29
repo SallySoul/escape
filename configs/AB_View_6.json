@@ -1,0 +1,40 @@
+{
+  "cutoffs": [
+    {
+      "cutoff": 30000,
+      "color": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "cutoff": 80000,
+      "color": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "cutoff": 150000,
+      "color": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "view": {
+    "width": 2000,
+    "height": 2000,
+    "zoom": 1275,
+    "center": [
+      -0.647663050,
+      0.380700836
+    ]
+  },
+  "metro_instances": 1500,
+  "samples": 2000,
+  "warm_up_samples": 500
+}

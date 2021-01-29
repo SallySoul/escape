@@ -16,6 +16,11 @@ pub struct RenderConfig {
 
     pub metro_instances: usize,
 
+    /// Depth Limit for the initial samples search
+    /// Default value is 500
+    #[serde(default = "RenderConfig::default_initial_search_depth")]
+    pub initial_search_depth: usize,
+
     /// Specifies how many samples the warm up will take.
     /// Default value is 10k
     #[serde(default = "RenderConfig::default_warm_up_samples")]
@@ -39,6 +44,10 @@ pub struct RenderConfig {
 }
 
 impl RenderConfig {
+    fn default_initial_search_depth() -> usize {
+        500
+    }
+
     fn default_samples() -> usize {
         100000
     }
