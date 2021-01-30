@@ -1,9 +1,7 @@
 use crate::config::SampleConfig;
 use crate::error::{EscapeError, EscapeResult};
-use crate::types::CountGrid;
 use crate::types::NormalizedGrid;
 use serde::{Deserialize, Serialize};
-use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
 

@@ -1,15 +1,7 @@
-#![allow(unused_imports)]
 #![allow(dead_code)]
 //#![feature(clamp)]
 #![feature(get_mut_unchecked)]
 #![feature(thread_id_value)]
-
-use image::{Rgb, RgbImage};
-use nalgebra::Complex;
-use rand::distributions::Distribution;
-use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use structopt::StructOpt;
 
 mod cli_options;
 mod comptroller;
@@ -21,9 +13,9 @@ mod types;
 mod view_config;
 mod worker;
 
-use crate::cli_options::{CliOptions, DrawOptions, SampleOptions};
-use crate::config::{DrawConfig, SampleConfig};
-use crate::error::{EscapeError, EscapeResult};
+use crate::cli_options::CliOptions;
+use crate::error::EscapeResult;
+use structopt::StructOpt;
 
 /*
 fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
@@ -51,8 +43,9 @@ fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
 
     result
 }
-*/
-fn main() -> Result<(), EscapeError> {
+ */
+
+fn main() -> EscapeResult {
     let cli_options = CliOptions::from_args();
 
     match &cli_options {

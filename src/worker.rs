@@ -1,8 +1,7 @@
 use rand::distributions::Distribution;
 use std::sync::Arc;
 
-use std::io::prelude::*;
-use std::io::{BufReader, BufWriter};
+use std::io::BufReader;
 
 use crate::cli_options::SampleOptions;
 use crate::comptroller::{ARComptroller, Comptroller};
@@ -10,7 +9,6 @@ use crate::config::SampleConfig;
 use crate::error::EscapeResult;
 use crate::histogram_result::HistogramResult;
 use crate::types::{Complex, CountGrid, NormalizedGrid};
-use crate::view_config::ViewConfig;
 
 use tracing::{info, trace};
 
@@ -238,9 +236,7 @@ impl WorkerState {
         let z_orbit_intersections = self.orbit_intersections();
         let mut z_contrib = self.contribution(z_orbit_intersections);
 
-        let mut accepted_samples_warmup = 0;
         let mut accepted_samples = 0;
-        let mut rejected_samples_warmup = 0;
         let mut rejected_samples = 0;
         let mut outside_samples = 0;
 
@@ -274,18 +270,22 @@ impl WorkerState {
                 z = mutation;
                 z_contrib = mutation_contrib;
                 z_orbit_len = mutation_orbit_len;
-                accepted_samples_warmup += 1;
+                accepted_samples += 1;
             } else {
-                rejected_samples_warmup += 1;
+                rejected_samples += 1;
             }
         }
 
         trace!(
-            accepted_samples_warmup,
-            rejected_samples_warmup,
+            accepted_samples,
+            rejected_samples,
+            outside_samples,
             "Warm up complete"
         );
 
+        accepted_samples = 0;
+        rejected_samples = 0;
+        outside_samples = 0;
         for s in 0..self.sample_config.samples {
             if s % 5000 == 0 {
                 if self.stop() {
@@ -301,6 +301,7 @@ impl WorkerState {
 
             // If the mutation doesn't intersect at all, it's a dud
             if intersection_count == 0 {
+                outside_samples += 1;
                 continue;
             }
 
@@ -321,7 +322,12 @@ impl WorkerState {
             }
         }
 
-        trace!(accepted_samples, rejected_samples, "Sampling complete");
+        trace!(
+            accepted_samples,
+            rejected_samples,
+            outside_samples,
+            "Sampling complete"
+        );
     }
 
     fn stop(&self) -> bool {
