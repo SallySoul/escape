@@ -1,5 +1,13 @@
 {
   "cutoffs": [
+   {
+      "cutoff": 100,
+      "color": [
+        1.0,
+        1.0,
+        0.0
+      ]
+    },
     {
       "cutoff": 30000,
       "color": [
@@ -17,7 +25,7 @@
       ]
     },
     {
-      "cutoff": 150000,
+      "cutoff": 130000,
       "color": [
         0.0,
         0.0,
@@ -34,7 +42,6 @@
       0.380700836
     ]
   },
-  "metro_instances": 1500,
-  "samples": 2000,
-  "warm_up_samples": 500
+  "samples": 200000,
+  "warm_up_samples": 5000
 }

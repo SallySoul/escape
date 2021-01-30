@@ -2,46 +2,46 @@ use crate::view_config::ViewConfig;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub struct CutoffColor {
-    pub cutoff: usize,
-    pub color: [f64; 3],
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct DrawConfig {
+    pub colors: Vec<[f64; 4]>,
+    pub background_color: [f64; 3],
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct RenderConfig {
-    pub cutoffs: Vec<CutoffColor>,
-
+pub struct SampleConfig {
+    pub cutoffs: Vec<usize>,
     pub view: ViewConfig,
 
     /// Depth Limit for the initial samples search
     /// Default value is 500
-    #[serde(default = "RenderConfig::default_initial_search_depth")]
+    #[serde(default = "SampleConfig::default_initial_search_depth")]
     pub initial_search_depth: usize,
 
     /// Specifies how many samples the warm up will take.
     /// Default value is 10k
-    #[serde(default = "RenderConfig::default_warm_up_samples")]
+    #[serde(default = "SampleConfig::default_warm_up_samples")]
     pub warm_up_samples: usize,
 
     /// For each new sample, specify the probability that a random point is chosen
     /// as opposed to perturbing the previous sample.
     /// Default value is 0.2
-    #[serde(default = "RenderConfig::default_random_sample_prob")]
+    #[serde(default = "SampleConfig::default_random_sample_prob")]
     pub random_sample_prob: f64,
 
     /// We the norm at which we decide that an orbit has escaped.
     /// Default value is 2.0
-    #[serde(default = "RenderConfig::default_norm_cutoff")]
+    #[serde(default = "SampleConfig::default_norm_cutoff")]
     pub norm_cutoff: f64,
 
     /// How many samples to take from a metropolis hastings run
     /// Default value is 100000
-    #[serde(default = "RenderConfig::default_samples")]
+    #[serde(default = "SampleConfig::default_samples")]
     pub samples: usize,
 }
 
-impl RenderConfig {
+impl SampleConfig {
     fn default_initial_search_depth() -> usize {
         500
     }

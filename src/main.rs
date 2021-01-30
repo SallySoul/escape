@@ -22,8 +22,8 @@ mod worker;
 use std::io::prelude::*;
 use std::io::{BufReader, BufWriter};
 
-use crate::cli_options::CliOptions;
-use crate::config::{CutoffColor, RenderConfig};
+use crate::cli_options::{CliOptions, SampleOptions, DrawOptions};
+use crate::config::{DrawConfig, SampleConfig};
 use crate::error::{EscapeError, EscapeResult};
 use crate::types::CountGrid;
 use crate::types::NormalizedGrid;
@@ -31,12 +31,12 @@ use crate::worker::WorkerState;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
-struct PartialResult {
+struct HistogramResult {
     config: RenderConfig,
     grids: Vec<NormalizedGrid>,
 }
 
-impl PartialResult {
+impl HistogramResult {
     fn to_file(
         config: &RenderConfig,
         grids: &Vec<NormalizedGrid>,
@@ -108,10 +108,9 @@ async fn run_worker(mut state_arc: Arc<WorkerState>) {
         state.run_worker();
     };
 }
-
 async fn async_main(
     config: Arc<RenderConfig>,
-    cli_options: &CliOptions,
+    cli_options: &SampleOptions,
 ) -> Result<(), EscapeError> {
     let c = comptroller::Comptroller::new(&cli_options).await;
 
@@ -137,28 +136,25 @@ async fn async_main(
     }
     let merged_grids = merge_results(config.clone(), &results).await;
     if let Some(output) = &cli_options.store_result {
-        PartialResult::to_file(&config, &merged_grids, &cli_options.output)?;
+        HistogramResult::to_file(&config, &merged_grids, output)?;
     }
-
+/*
     println!("Done Merging");
     color_grids(&config, &merged_grids).save(&cli_options.output)?;
 
     println!("Done writing file, {}", cli_options.output.display());
-
+*/
     Ok(())
 }
-
+/*
 fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
     let mut result = RgbImage::new(config.view.width as u32, config.view.height as u32);
     for x in 0..config.view.width {
         for y in 0..config.view.height {
             let mut rgb_fp = [0.0, 0.0, 0.0];
             for (cutoff_index, config) in config.cutoffs.iter().enumerate() {
-                for color in 0..2 {
+                for color in 0..3 {
                     rgb_fp[color] += grids[cutoff_index].value(x, y) * config.color[color];
-                }
-                for color in 2..3 {
-                    rgb_fp[color] += grids[cutoff_index].value(x, y).sqrt() * config.color[color];
                 }
             }
 
@@ -176,7 +172,7 @@ fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
 
     result
 }
-
+*/
 fn main() -> Result<(), EscapeError> {
     let cli_options = CliOptions::from_args();
 
@@ -187,15 +183,20 @@ fn main() -> Result<(), EscapeError> {
         .build()
         .unwrap();
 
+    match &cli_options {
+        Sample(sample_options) => {
+            let config: Arc<RenderConfig> =
+                Arc::new(serde_json::from_reader(std::fs::File::open(config_path)?)?);
+            rt.block_on(async_main(config, &cli_options))?;
+        }
+    }
+
     if let Some(config_path) = &cli_options.config {
-        let config: Arc<RenderConfig> =
-            Arc::new(serde_json::from_reader(std::fs::File::open(config_path)?)?);
-        rt.block_on(async_main(config, &cli_options))?;
-    } else {
-        println!("Loading stored Result");
-        let (config, grids) = PartialResult::from_file(&cli_options.partial_result.unwrap())?;
-        color_grids(&config, &grids).save(&cli_options.output)?;
-        println!("Done writing file, {}", &cli_options.output.display());
+            } else {
+        //println!("Loading stored Result");
+        //let (config, grids) = HistogramResult::from_file(&cli_options.partial_result.unwrap())?;
+        //color_grids(&config, &grids).save(&cli_options.output)?;
+        //println!("Done writing file, {}", &cli_options.output.display());
     }
 
     println!("Done!");

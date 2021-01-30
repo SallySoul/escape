@@ -2,7 +2,7 @@ use rand::distributions::Distribution;
 use std::sync::Arc;
 
 use crate::comptroller::ARComptroller;
-use crate::config::RenderConfig;
+use crate::config::SampleConfig;
 use crate::types::{Complex, CountGrid};
 use crate::view_config::ViewConfig;
 
@@ -73,7 +73,7 @@ fn random_prob() -> f64 {
 }
 
 pub struct WorkerState {
-    render_config: RenderConfig,
+    sample_config: SampleConfig,
     pub grids: Vec<CountGrid>,
     full_random: FullRandomSample,
     norm_cutoff_sqr: f64,
@@ -84,14 +84,14 @@ pub struct WorkerState {
 }
 
 impl WorkerState {
-    pub fn new(render_config: &RenderConfig, comptroller: ARComptroller) -> WorkerState {
-        let cutoff = render_config.cutoffs.last().unwrap().cutoff;
-        let view = render_config.view;
+    pub fn new(sample_config: &SampleConfig, comptroller: ARComptroller) -> WorkerState {
+        let cutoff = sample_config.cutoffs.last().unwrap();
+        let view = sample_config.view;
         WorkerState {
-            render_config: render_config.clone(),
-            grids: vec![CountGrid::new(view.width, view.height); render_config.cutoffs.len()],
+            sample_config: sample_config.clone(),
+            grids: vec![CountGrid::new(view.width, view.height); sample_config.cutoffs.len()],
             full_random: FullRandomSample::new(),
-            norm_cutoff_sqr: render_config.norm_cutoff * render_config.norm_cutoff,
+            norm_cutoff_sqr: sample_config.norm_cutoff * sample_config.norm_cutoff,
             iteration_cutoff: cutoff,
             iteration_cutoff_f64: cutoff as f64,
             orbit_buffer: Vec::with_capacity(cutoff),
@@ -128,7 +128,7 @@ impl WorkerState {
     /// without modifying the counts
     /// This is useful when finding samples or warming up the sampling routine
     fn orbit_intersections(&mut self) -> usize {
-        let view = self.render_config.view;
+        let view = self.sample_config.view;
         let mut result = 0;
         for c in &self.orbit_buffer {
             if let Some(_) = view.project(&c) {
@@ -144,9 +144,9 @@ impl WorkerState {
     /// Record the contents of the orbit buffer to the count grids
     /// Return the number of intersections (does include symetry)
     fn record_orbit(&mut self) -> usize {
-        let view = self.render_config.view;
+        let view = self.sample_config.view;
         let mut result = 0;
-        for (i, cutoff) in self.render_config.cutoffs.iter().enumerate() {
+        for (i, cutoff) in self.sample_config.cutoffs.iter().enumerate() {
             if self.orbit_buffer.len() <= cutoff.cutoff {
                 for c in &self.orbit_buffer {
                     // Account for symetry by adding the point and its conjugate
@@ -187,11 +187,11 @@ impl WorkerState {
         radius: f64,
         depth: usize,
     ) -> Option<Complex> {
-        if depth > self.render_config.initial_search_depth {
+        if depth > self.sample_config.initial_search_depth {
             return None;
         }
 
-        let view = self.render_config.view;
+        let view = self.sample_config.view;
         let mut closest_distance = std::f64::MAX;
         let mut closest_sample = Complex::new(0.0, 0.0);
 
@@ -229,8 +229,8 @@ impl WorkerState {
     /// Some of the time we want to perturb the last good sample
     /// Other times we want to try a complelety new point
     fn mutate(&self, c: &Complex) -> Complex {
-        let view = self.render_config.view;
-        if random_prob() < self.render_config.random_sample_prob {
+        let view = self.sample_config.view;
+        if random_prob() < self.sample_config.random_sample_prob {
             self.full_random.sample()
         } else {
             let mut result = c.clone();
@@ -279,7 +279,7 @@ impl WorkerState {
         let mut outside_samples = 0;
 
         //println!("*** Starting WarmUp");
-        for _ in 0..self.render_config.warm_up_samples {
+        for _ in 0..self.sample_config.warm_up_samples {
             let mutation = self.mutate(&z);
             self.evaluate(&mutation);
             let mutation_orbit_len = self.orbit_buffer.len();
@@ -312,7 +312,7 @@ impl WorkerState {
             accepted_samples_warmup, rejected_samples_warmup
         );
         */
-        for s in 0..self.render_config.samples {
+        for s in 0..self.sample_config.samples {
             if s % 5000 == 0 {
                 if self.stop() {
                     println!("In sampling stop");
@@ -359,9 +359,12 @@ impl WorkerState {
     }
 
     pub fn run_worker(&mut self) {
+        let mut metro_instances = 0;
         while !self.stop() {
+            metro_instances += 1;
             self.run_metro_instance();
         }
+        println!("Ran {} metro instances", metro_instances);
     }
 }
 
