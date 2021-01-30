@@ -2,14 +2,13 @@ use crate::view_config::ViewConfig;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct DrawConfig {
     pub colors: Vec<[f64; 4]>,
     pub background_color: [f64; 3],
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SampleConfig {
     pub cutoffs: Vec<usize>,
     pub view: ViewConfig,

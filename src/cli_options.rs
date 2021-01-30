@@ -12,7 +12,7 @@ pub enum CliOptions {
 pub struct SampleOptions {
     /// Path to the sample config file
     #[structopt(short, long, parse(from_os_str))]
-    pub config: Option<PathBuf>,
+    pub config: PathBuf,
 
     /// The number of worker threads to spawn (more threads may be used)
     #[structopt(short, long)]

@@ -1,7 +1,7 @@
-use crate::cli_options::CliOptions;
 use crate::error::EscapeResult;
 use std::sync::{Arc, RwLock};
 
+#[derive(Debug)]
 pub struct Comptroller {
     stop: bool,
 }
@@ -26,13 +26,13 @@ async fn duration_handler(comptroller: ARComptroller, seconds: u64) -> EscapeRes
 }
 
 impl Comptroller {
-    pub async fn new(cli_options: &CliOptions) -> ARComptroller {
+    pub async fn new(maybe_duration: &Option<u64>) -> ARComptroller {
         let result = Arc::new(RwLock::new(Comptroller { stop: false }));
 
         tokio::spawn(ctrl_c_handler(result.clone()));
 
-        if let Some(seconds) = &cli_options.duration {
-            let _sleep_future = tokio::spawn(duration_handler(result.clone(), seconds.clone()));
+        if let Some(seconds) = maybe_duration {
+            tokio::spawn(duration_handler(result.clone(), seconds.clone()));
         }
 
         result

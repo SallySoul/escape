@@ -1,10 +1,18 @@
 use rand::distributions::Distribution;
 use std::sync::Arc;
 
-use crate::comptroller::ARComptroller;
+use std::io::prelude::*;
+use std::io::{BufReader, BufWriter};
+
+use crate::cli_options::SampleOptions;
+use crate::comptroller::{ARComptroller, Comptroller};
 use crate::config::SampleConfig;
-use crate::types::{Complex, CountGrid};
+use crate::error::EscapeResult;
+use crate::histogram_result::HistogramResult;
+use crate::types::{Complex, CountGrid, NormalizedGrid};
 use crate::view_config::ViewConfig;
+
+use tracing::{info, trace};
 
 fn radius_sample(radius: f64) -> Complex {
     let mut rng = rand::thread_rng();
@@ -18,64 +26,15 @@ fn radius_sample(radius: f64) -> Complex {
     }
 }
 
-struct FullRandomSample {
-    re_range: rand::distributions::Uniform<f64>,
-    im_range: rand::distributions::Uniform<f64>,
-}
-
-impl FullRandomSample {
-    fn new() -> FullRandomSample {
-        FullRandomSample {
-            re_range: rand::distributions::Uniform::from(-2.0..2.0),
-            im_range: rand::distributions::Uniform::from(0.0..2.0),
-        }
-    }
-
-    fn sample_square(&self) -> Complex {
-        let mut rng = rand::thread_rng();
-        let re_sample = self.re_range.sample(&mut rng);
-        let im_sample = self.im_range.sample(&mut rng);
-        Complex::new(re_sample, im_sample)
-    }
-
-    fn sample(&self) -> Complex {
-        loop {
-            let c = self.sample_square();
-            if c.norm_sqr() <= 4.0 {
-                return c;
-            }
-        }
-    }
-}
-
-#[cfg(test)]
-mod full_random_sample_tests {
-    use super::*;
-
-    #[test]
-    fn random_sampling() {
-        let r = FullRandomSample::new();
-
-        for _ in 0..500 {
-            let c = r.sample();
-            assert!(c.re >= -2.0);
-            assert!(c.re <= 2.0);
-            assert!(c.im >= 0.0);
-            assert!(c.im <= 2.0);
-            assert!(c.norm_sqr() <= 4.0);
-        }
-    }
-}
-
 fn random_prob() -> f64 {
     let mut rng = rand::thread_rng();
     rand::distributions::Uniform::from(0.0..1.0).sample(&mut rng)
 }
 
+#[derive(Debug)]
 pub struct WorkerState {
     sample_config: SampleConfig,
     pub grids: Vec<CountGrid>,
-    full_random: FullRandomSample,
     norm_cutoff_sqr: f64,
     iteration_cutoff: usize,
     iteration_cutoff_f64: f64,
@@ -85,12 +44,11 @@ pub struct WorkerState {
 
 impl WorkerState {
     pub fn new(sample_config: &SampleConfig, comptroller: ARComptroller) -> WorkerState {
-        let cutoff = sample_config.cutoffs.last().unwrap();
+        let cutoff = sample_config.cutoffs.last().unwrap().clone();
         let view = sample_config.view;
         WorkerState {
             sample_config: sample_config.clone(),
             grids: vec![CountGrid::new(view.width, view.height); sample_config.cutoffs.len()],
-            full_random: FullRandomSample::new(),
             norm_cutoff_sqr: sample_config.norm_cutoff * sample_config.norm_cutoff,
             iteration_cutoff: cutoff,
             iteration_cutoff_f64: cutoff as f64,
@@ -99,6 +57,7 @@ impl WorkerState {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn evaluate(&mut self, c: &Complex) -> bool {
         self.orbit_buffer.clear();
         let mut z = c.clone();
@@ -127,6 +86,7 @@ impl WorkerState {
     /// Find the number of times the orbit buffer intersects the view
     /// without modifying the counts
     /// This is useful when finding samples or warming up the sampling routine
+    #[tracing::instrument(skip(self))]
     fn orbit_intersections(&mut self) -> usize {
         let view = self.sample_config.view;
         let mut result = 0;
@@ -143,11 +103,12 @@ impl WorkerState {
 
     /// Record the contents of the orbit buffer to the count grids
     /// Return the number of intersections (does include symetry)
+    #[tracing::instrument(skip(self))]
     fn record_orbit(&mut self) -> usize {
         let view = self.sample_config.view;
         let mut result = 0;
         for (i, cutoff) in self.sample_config.cutoffs.iter().enumerate() {
-            if self.orbit_buffer.len() <= cutoff.cutoff {
+            if self.orbit_buffer.len() <= cutoff.clone() {
                 for c in &self.orbit_buffer {
                     // Account for symetry by adding the point and its conjugate
                     if let Some((x, y)) = view.project(&c) {
@@ -172,8 +133,11 @@ impl WorkerState {
     ///
     /// This is a port of Alexander Boswell's FindInitialSample function.
     /// Per the comment in his code, better than random sampling for higher zooms
+    #[tracing::instrument(skip(self))]
     fn find_initial_sample(&mut self) -> Option<Complex> {
-        return self.find_initial_sample_r(&Complex::new(0.0, 0.0), 2.0, 0);
+        let (result, depth) = self.find_initial_sample_r(&Complex::new(0.0, 0.0), 2.0, 0);
+        trace!(depth, "find initial sample recursion completed");
+        result
     }
 
     /// Here's the gist
@@ -186,9 +150,9 @@ impl WorkerState {
         seed_r: &Complex,
         radius: f64,
         depth: usize,
-    ) -> Option<Complex> {
+    ) -> (Option<Complex>, usize) {
         if depth > self.sample_config.initial_search_depth {
-            return None;
+            return (None, depth);
         }
 
         let view = self.sample_config.view;
@@ -208,7 +172,7 @@ impl WorkerState {
             // If sample's orbit intersects view then we're done
             let intersection_count = self.orbit_intersections();
             if intersection_count > 0 {
-                return Some(sample);
+                return (Some(sample), depth);
             }
 
             // Otherwise, lets keep track of the sample that produced an orbit with an
@@ -228,10 +192,11 @@ impl WorkerState {
     /// Sampling with the Metropolis-Hastings algorithm is based on mutating a "good" sample
     /// Some of the time we want to perturb the last good sample
     /// Other times we want to try a complelety new point
+    #[tracing::instrument(skip(self))]
     fn mutate(&self, c: &Complex) -> Complex {
         let view = self.sample_config.view;
         if random_prob() < self.sample_config.random_sample_prob {
-            self.full_random.sample()
+            radius_sample(self.sample_config.norm_cutoff)
         } else {
             let mut result = c.clone();
             let r1 = 1.0 / view.zoom * 0.0001;
@@ -256,6 +221,7 @@ impl WorkerState {
         numerator / denominator
     }
 
+    #[tracing::instrument(skip(self))]
     fn run_metro_instance(&mut self) {
         //println!("*** Starting Run");
         // TODO these need to be setup properly
@@ -279,7 +245,14 @@ impl WorkerState {
         let mut outside_samples = 0;
 
         //println!("*** Starting WarmUp");
-        for _ in 0..self.sample_config.warm_up_samples {
+        for s in 0..self.sample_config.warm_up_samples {
+            if s % 1000 == 0 {
+                if self.stop() {
+                    println!("In sampling stop");
+                    break;
+                }
+            }
+
             let mutation = self.mutate(&z);
             self.evaluate(&mutation);
             let mutation_orbit_len = self.orbit_buffer.len();
@@ -306,12 +279,13 @@ impl WorkerState {
                 rejected_samples_warmup += 1;
             }
         }
-        /*
-        println!(
-            "*** Warm up done! accepted: {}, rejected: {}",
-            accepted_samples_warmup, rejected_samples_warmup
+
+        trace!(
+            accepted_samples_warmup,
+            rejected_samples_warmup,
+            "Warm up complete"
         );
-        */
+
         for s in 0..self.sample_config.samples {
             if s % 5000 == 0 {
                 if self.stop() {
@@ -346,31 +320,150 @@ impl WorkerState {
                 rejected_samples += 1;
             }
         }
-        /*
-        println!(
-            "*** Done! accepted: {}, rejected: {}",
-            accepted_samples, rejected_samples
-        );
-        */
+
+        trace!(accepted_samples, rejected_samples, "Sampling complete");
     }
 
     fn stop(&self) -> bool {
         self.comptroller.read().unwrap().stop()
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn run_worker(&mut self) {
         let mut metro_instances = 0;
         while !self.stop() {
             metro_instances += 1;
+            let thread_id = std::thread::current().id().as_u64();
+            trace!(thread_id, metro_instances, "Starting metro instance");
             self.run_metro_instance();
         }
         println!("Ran {} metro instances", metro_instances);
     }
 }
 
-/*
+#[tracing::instrument(skip(config, grids))]
+fn merge_grids(config: &SampleConfig, grids: Vec<CountGrid>) -> CountGrid {
+    let mut result = CountGrid::new(config.view.width, config.view.height);
+    for x in 0..config.view.width {
+        for y in 0..config.view.height {
+            let mut sum = 0;
+            for grid in &grids {
+                sum += grid.value(x, y);
+            }
+            result.set_value(sum, x, y);
+        }
+    }
 
-async fn run_worker(state: Arc<WorkerState>) -> EscapeResult {
+    result
+}
+
+#[tracing::instrument(skip(config, results))]
+async fn merge_results(
+    config: Arc<SampleConfig>,
+    results: &Vec<&Vec<CountGrid>>,
+) -> Vec<NormalizedGrid> {
+    let cutoff_count = config.cutoffs.len();
+    let mut tasks = Vec::with_capacity(cutoff_count);
+    for cutoff_index in 0..cutoff_count {
+        let mut count_grids = Vec::with_capacity(results.len());
+        for w in 0..results.len() {
+            count_grids.push(results[w][cutoff_index].clone());
+        }
+        let c = config.clone();
+        tasks.push(tokio::spawn(async move {
+            merge_grids(&c, count_grids).to_normalized_grid()
+        }));
+    }
+
+    let mut result = Vec::with_capacity(cutoff_count);
+    for task in tasks {
+        result.push(task.await.unwrap());
+    }
+
+    result
+}
+
+#[tracing::instrument(skip(state_arc))]
+async fn run_worker(mut state_arc: Arc<WorkerState>) {
+    unsafe {
+        let state = Arc::get_mut_unchecked(&mut state_arc);
+        state.run_worker();
+    };
+}
+
+async fn async_main(config: Arc<SampleConfig>, cli_options: &SampleOptions) -> EscapeResult {
+    tracing_subscriber::fmt::init();
+
+    let c = Comptroller::new(&cli_options.duration).await;
+
+    let mut worker_states = Vec::with_capacity(cli_options.workers);
+    let mut futures = Vec::with_capacity(cli_options.workers);
+    for i in 0..cli_options.workers {
+        worker_states.push(Arc::new(WorkerState::new(&config, c.clone())));
+        futures.push(tokio::spawn(run_worker(worker_states[i].clone())));
+    }
+    info!(cli_options.workers, "Started sampling workers");
+
+    let mut results = Vec::with_capacity(cli_options.workers);
+    for w in futures {
+        results.push(w.await.unwrap());
+    }
+    info!("Sampling workers have completed");
+
+    let mut results = Vec::new();
+    for w in &worker_states {
+        results.push(&w.grids);
+    }
+    let merged_grids = merge_results(config.clone(), &results).await;
+    info!("Worker results have been merged");
+
+    HistogramResult::to_file(&config, &merged_grids, &cli_options.output)?;
+    info!(
+        "Result has been written to {}",
+        &cli_options.output.display()
+    );
+
     Ok(())
 }
-*/
+
+pub fn run_sampling(sample_options: &SampleOptions) -> EscapeResult {
+    // Note that we add one extra thread for timers / signal handlers
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(sample_options.workers + 1)
+        .enable_all()
+        .build()
+        .unwrap();
+
+    let mut config_reader = BufReader::new(std::fs::File::open(&sample_options.config)?);
+    let config: Arc<SampleConfig> = Arc::new(serde_json::from_reader(&mut config_reader)?);
+
+    rt.block_on(async_main(config, &sample_options))?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn radius_sampling() {
+        for _ in 0..500 {
+            let c = radius_sample(2.0);
+            assert!(c.re >= -2.0);
+            assert!(c.re <= 2.0);
+            assert!(c.im >= 0.0);
+            assert!(c.im <= 2.0);
+            assert!(c.norm_sqr() <= 4.0);
+        }
+    }
+
+    #[test]
+    fn prob_sampling() {
+        for _ in 0..500 {
+            let p = random_prob();
+            assert!(p >= 0.0);
+            assert!(p <= 1.0);
+        }
+    }
+}

@@ -1,7 +1,7 @@
 use nalgebra::Complex;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Grid<N: num_traits::Num + Copy + Clone> {
     boxes: Vec<N>,
     width: usize,

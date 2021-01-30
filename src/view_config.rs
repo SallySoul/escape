@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::types::Complex;
 
-#[derive(Serialize, Deserialize, Copy, Clone)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub struct ViewConfig {
     pub center: Complex,
     pub zoom: f64,
