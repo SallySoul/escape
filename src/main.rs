@@ -1,49 +1,36 @@
-#![allow(dead_code)]
-//#![feature(clamp)]
 #![feature(get_mut_unchecked)]
 #![feature(thread_id_value)]
 
+/// Structs for the CLI interface
 mod cli_options;
+
+/// Syncronizes the workers
 mod comptroller;
+
+/// Describes config files for sampling and drawing
 mod config;
+
+/// Common error and result type for the application
 mod error;
+
+/// Grid type used to store histograms and normalized results
 mod grid;
+
+/// Result type used to save sampling
 mod histogram_result;
+
+/// Common types found in the application
 mod types;
-mod view_config;
+
+/// Buddhabrot sampling implementation
 mod worker;
+
+/// Implementation to draw buddhabrot samples
+mod draw;
 
 use crate::cli_options::CliOptions;
 use crate::error::EscapeResult;
 use structopt::StructOpt;
-
-/*
-fn color_grids(config: &RenderConfig, grids: &[NormalizedGrid]) -> RgbImage {
-    let mut result = RgbImage::new(config.view.width as u32, config.view.height as u32);
-    for x in 0..config.view.width {
-        for y in 0..config.view.height {
-            let mut rgb_fp = [0.0, 0.0, 0.0];
-            for (cutoff_index, config) in config.cutoffs.iter().enumerate() {
-                for color in 0..3 {
-                    rgb_fp[color] += grids[cutoff_index].value(x, y) * config.color[color];
-                }
-            }
-
-            let rgb = {
-                let mut rgb = [0, 0, 0];
-                for color in 0..3 {
-                    rgb[color] = (rgb_fp[color].clamp(0.0, 1.0) * 255.0) as u8;
-                }
-                rgb
-            };
-
-            result.put_pixel(x as u32, y as u32, Rgb(rgb));
-        }
-    }
-
-    result
-}
- */
 
 fn main() -> EscapeResult {
     let cli_options = CliOptions::from_args();
@@ -52,7 +39,9 @@ fn main() -> EscapeResult {
         CliOptions::Sample(sample_options) => {
             worker::run_sampling(&sample_options)?;
         }
-        CliOptions::Draw(_draw_options) => {}
+        CliOptions::Draw(draw_options) => {
+            draw::run_draw(&draw_options)?;
+        }
     }
     Ok(())
 }

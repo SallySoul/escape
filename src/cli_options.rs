@@ -31,7 +31,7 @@ pub struct SampleOptions {
 pub struct DrawOptions {
     /// Path to the draw config file
     #[structopt(short, long, parse(from_os_str))]
-    pub config: Option<PathBuf>,
+    pub config: PathBuf,
 
     /// Path to store partial image
     #[structopt(short, long, parse(from_os_str))]

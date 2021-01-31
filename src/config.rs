@@ -1,11 +1,18 @@
-use crate::view_config::ViewConfig;
+use crate::types::Complex;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct DrawConfig {
     pub colors: Vec<[f64; 4]>,
     pub background_color: [f64; 3],
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub struct ViewConfig {
+    pub center: Complex,
+    pub zoom: f64,
+    pub width: usize,
+    pub height: usize,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]

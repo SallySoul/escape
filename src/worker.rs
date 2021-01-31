@@ -5,7 +5,7 @@ use std::io::BufReader;
 
 use crate::cli_options::SampleOptions;
 use crate::comptroller::{ARComptroller, Comptroller};
-use crate::config::SampleConfig;
+use crate::config::{SampleConfig, ViewConfig};
 use crate::error::EscapeResult;
 use crate::histogram_result::HistogramResult;
 use crate::types::{Complex, CountGrid, NormalizedGrid};
@@ -27,6 +27,24 @@ fn radius_sample(radius: f64) -> Complex {
 fn random_prob() -> f64 {
     let mut rng = rand::thread_rng();
     rand::distributions::Uniform::from(0.0..1.0).sample(&mut rng)
+}
+
+pub fn project_onto_view(view: &ViewConfig, c: &Complex) -> Option<(usize, usize)> {
+    let x_fp = ((c.re - view.center.re) * view.zoom) + 0.5;
+    let y_fp = ((c.im - view.center.im) * view.zoom) + 0.5;
+
+    let x_signed = (x_fp * view.width as f64) as i32;
+    let y_signed = (y_fp * view.height as f64) as i32;
+
+    if x_signed >= 0
+        && y_signed >= 0
+        && x_signed < view.width as i32
+        && y_signed < view.height as i32
+    {
+        Some((x_signed as usize, y_signed as usize))
+    } else {
+        None
+    }
 }
 
 #[derive(Debug)]
@@ -53,6 +71,10 @@ impl WorkerState {
             orbit_buffer: Vec::with_capacity(cutoff),
             comptroller,
         }
+    }
+
+    pub fn project(&self, c: &Complex) -> Option<(usize, usize)> {
+        project_onto_view(&self.sample_config.view, c)
     }
 
     #[tracing::instrument(skip(self))]
@@ -86,13 +108,12 @@ impl WorkerState {
     /// This is useful when finding samples or warming up the sampling routine
     #[tracing::instrument(skip(self))]
     fn orbit_intersections(&mut self) -> usize {
-        let view = self.sample_config.view;
         let mut result = 0;
         for c in &self.orbit_buffer {
-            if let Some(_) = view.project(&c) {
+            if let Some(_) = self.project(&c) {
                 result += 1;
             }
-            if let Some(_) = view.project(&c.conj()) {
+            if let Some(_) = self.project(&c.conj()) {
                 result += 1;
             }
         }
@@ -103,18 +124,17 @@ impl WorkerState {
     /// Return the number of intersections (does include symetry)
     #[tracing::instrument(skip(self))]
     fn record_orbit(&mut self) -> usize {
-        let view = self.sample_config.view;
         let mut result = 0;
         for (i, cutoff) in self.sample_config.cutoffs.iter().enumerate() {
             if self.orbit_buffer.len() <= cutoff.clone() {
                 for c in &self.orbit_buffer {
                     // Account for symetry by adding the point and its conjugate
-                    if let Some((x, y)) = view.project(&c) {
+                    if let Some((x, y)) = self.project(&c) {
                         self.grids[i].increment(x, y);
                         result += 1;
                     }
 
-                    if let Some((x, y)) = view.project(&c.conj()) {
+                    if let Some((x, y)) = self.project(&c.conj()) {
                         self.grids[i].increment(x, y);
                         result += 1;
                     }
@@ -471,5 +491,75 @@ mod tests {
             assert!(p >= 0.0);
             assert!(p <= 1.0);
         }
+    }
+
+    #[test]
+    fn test_project_1() {
+        let config = ViewConfig::new(Complex::new(0.0, 0.0), 1.0, 500, 400);
+
+        let pixel_eps = 0.00001;
+
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(0.0, 0.0)),
+            Some((250, 200))
+        );
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(-0.5, -0.5)),
+            Some((0, 0))
+        );
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(-0.5, 0.5 - pixel_eps)),
+            Some((0, 399))
+        );
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(0.5 - pixel_eps, -0.5)),
+            Some((499, 0))
+        );
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(0.5 - pixel_eps, 0.5 - pixel_eps)),
+            Some((499, 399))
+        );
+
+        assert_eq!(project_onto_view(&config, &Complex::new(100.0, 0.5)), None);
+        assert_eq!(project_onto_view(&config, &Complex::new(-0.6, 0.8)), None);
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(std::f64::NAN, 0.8)),
+            None
+        );
+    }
+
+    #[test]
+    fn test_project_2() {
+        let config = ViewConfig::new(Complex::new(-1.0, 2.0), 2.0, 500, 400);
+
+        let pixel_eps = 0.00001;
+
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(-1.0, 2.0)),
+            Some((250, 200))
+        );
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(-1.25, 1.75)),
+            Some((0, 0))
+        );
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(-1.25, 2.25 - pixel_eps)),
+            Some((0, 399))
+        );
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(-0.75 - pixel_eps, 1.75)),
+            Some((499, 0))
+        );
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(-0.75 - pixel_eps, 2.25 - pixel_eps)),
+            Some((499, 399))
+        );
+
+        assert_eq!(project_onto_view(&config, &Complex::new(100.0, 0.5)), None);
+        assert_eq!(project_onto_view(&config, &Complex::new(-0.6, 0.8)), None);
+        assert_eq!(
+            project_onto_view(&config, &Complex::new(std::f64::NAN, 0.8)),
+            None
+        );
     }
 }

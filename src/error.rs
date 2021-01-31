@@ -1,8 +1,5 @@
 #[derive(Debug, thiserror::Error)]
 pub enum EscapeError {
-    #[error("default error")]
-    Default,
-
     #[error("Image conversion")]
     Image(#[from] image::ImageError),
 
