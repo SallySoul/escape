@@ -4,14 +4,8 @@
 /// Structs for the CLI interface
 mod cli_options;
 
-/// Syncronizes the workers
-mod comptroller;
-
 /// Describes config files for sampling and drawing
 mod config;
-
-/// Common error and result type for the application
-mod error;
 
 /// Grid type used to store histograms and normalized results
 mod grid;
@@ -19,7 +13,7 @@ mod grid;
 /// Result type used to save sampling
 mod histogram_result;
 
-/// Common types found in the application
+/// Common types found in the application, including the error type
 mod types;
 
 /// Buddhabrot sampling implementation
@@ -29,7 +23,7 @@ mod worker;
 mod draw;
 
 use crate::cli_options::CliOptions;
-use crate::error::EscapeResult;
+use crate::types::EscapeResult;
 use structopt::StructOpt;
 
 fn main() -> EscapeResult {

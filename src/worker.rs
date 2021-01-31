@@ -1,14 +1,12 @@
 use rand::distributions::Distribution;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use std::io::BufReader;
 
 use crate::cli_options::SampleOptions;
-use crate::comptroller::{ARComptroller, Comptroller};
 use crate::config::{SampleConfig, ViewConfig};
-use crate::error::EscapeResult;
 use crate::histogram_result::HistogramResult;
-use crate::types::{Complex, CountGrid};
+use crate::types::{Complex, CountGrid, EscapeResult};
 
 use tracing::{info, trace};
 
@@ -48,6 +46,47 @@ pub fn project_onto_view(view: &ViewConfig, c: &Complex) -> Option<(usize, usize
 }
 
 #[derive(Debug)]
+pub struct StopSwitch {
+    stop: bool,
+}
+pub type ARStopSwitch = Arc<RwLock<StopSwitch>>;
+
+impl StopSwitch {
+    pub async fn new(maybe_duration: &Option<u64>) -> ARStopSwitch {
+        let result = Arc::new(RwLock::new(StopSwitch { stop: false }));
+
+        tokio::spawn(ctrl_c_handler(result.clone()));
+
+        if let Some(seconds) = maybe_duration {
+            tokio::spawn(duration_handler(result.clone(), seconds.clone()));
+        }
+
+        result
+    }
+
+    pub fn stop(&self) -> bool {
+        self.stop
+    }
+}
+
+async fn ctrl_c_handler(switch: ARStopSwitch) -> EscapeResult {
+    loop {
+        tokio::signal::ctrl_c().await?;
+        info!("CTRL C pressed!");
+        let mut s = switch.write().unwrap();
+        s.stop = true;
+    }
+}
+
+async fn duration_handler(switch: ARStopSwitch, seconds: u64) -> EscapeResult {
+    tokio::time::sleep(std::time::Duration::from_secs(seconds)).await;
+    info!("Duration up");
+    let mut s = switch.write().unwrap();
+    s.stop = true;
+    Ok(())
+}
+
+#[derive(Debug)]
 pub struct WorkerState {
     sample_config: SampleConfig,
     pub grids: Vec<CountGrid>,
@@ -55,11 +94,11 @@ pub struct WorkerState {
     iteration_cutoff: usize,
     iteration_cutoff_f64: f64,
     orbit_buffer: Vec<Complex>,
-    comptroller: ARComptroller,
+    stop_switch: ARStopSwitch,
 }
 
 impl WorkerState {
-    pub fn new(sample_config: &SampleConfig, comptroller: ARComptroller) -> WorkerState {
+    pub fn new(sample_config: &SampleConfig, stop_switch: ARStopSwitch) -> WorkerState {
         let cutoff = sample_config.cutoffs.last().unwrap().clone();
         let view = sample_config.view;
         WorkerState {
@@ -69,7 +108,7 @@ impl WorkerState {
             iteration_cutoff: cutoff,
             iteration_cutoff_f64: cutoff as f64,
             orbit_buffer: Vec::with_capacity(cutoff),
-            comptroller,
+            stop_switch,
         }
     }
 
@@ -351,7 +390,7 @@ impl WorkerState {
     }
 
     fn stop(&self) -> bool {
-        self.comptroller.read().unwrap().stop()
+        self.stop_switch.read().unwrap().stop()
     }
 
     #[tracing::instrument(skip(self))]
@@ -359,8 +398,7 @@ impl WorkerState {
         let mut metro_instances = 0;
         while !self.stop() {
             metro_instances += 1;
-            let thread_id = std::thread::current().id().as_u64();
-            trace!(thread_id, metro_instances, "Starting metro instance");
+            trace!(metro_instances, "Starting metro instance");
             self.run_metro_instance();
         }
         println!("Ran {} metro instances", metro_instances);
@@ -422,12 +460,12 @@ async fn async_main(config: Arc<SampleConfig>, cli_options: &SampleOptions) -> E
         .with_max_level(&cli_options.verbosity)
         .init();
 
-    let c = Comptroller::new(&cli_options.duration).await;
+    let stop_switch = StopSwitch::new(&cli_options.duration).await;
 
     let mut worker_states = Vec::with_capacity(cli_options.workers);
     let mut futures = Vec::with_capacity(cli_options.workers);
     for i in 0..cli_options.workers {
-        worker_states.push(Arc::new(WorkerState::new(&config, c.clone())));
+        worker_states.push(Arc::new(WorkerState::new(&config, stop_switch.clone())));
         futures.push(tokio::spawn(run_worker(worker_states[i].clone())));
     }
     info!(cli_options.workers, "Started sampling workers");

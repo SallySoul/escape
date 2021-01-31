@@ -1,8 +1,7 @@
 use crate::cli_options::DrawOptions;
 use crate::config::{DrawConfig, SampleConfig};
-use crate::error::{EscapeError, EscapeResult};
 use crate::histogram_result::HistogramResult;
-use crate::types::NormalizedGrid;
+use crate::types::{EscapeError, EscapeResult, NormalizedGrid};
 
 use std::io::BufReader;
 

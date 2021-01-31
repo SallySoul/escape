@@ -1,6 +1,6 @@
+use crate::types::Verbosity;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use crate::types::Verbosity;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "escape")]

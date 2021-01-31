@@ -1,6 +1,5 @@
 use crate::config::SampleConfig;
-use crate::error::{EscapeError, EscapeResult};
-use crate::types::CountGrid;
+use crate::types::{CountGrid, EscapeError, EscapeResult};
 use serde::{Deserialize, Serialize};
 use std::io::{BufReader, BufWriter};
 use std::sync::Arc;
