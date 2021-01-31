@@ -8,7 +8,7 @@ use crate::comptroller::{ARComptroller, Comptroller};
 use crate::config::{SampleConfig, ViewConfig};
 use crate::error::EscapeResult;
 use crate::histogram_result::HistogramResult;
-use crate::types::{Complex, CountGrid, NormalizedGrid};
+use crate::types::{Complex, CountGrid};
 
 use tracing::{info, trace};
 
@@ -264,7 +264,7 @@ impl WorkerState {
         for s in 0..self.sample_config.warm_up_samples {
             if s % 1000 == 0 {
                 if self.stop() {
-                    println!("In sampling stop");
+                    info!("In warmup stop");
                     break;
                 }
             }
@@ -309,7 +309,7 @@ impl WorkerState {
         for s in 0..self.sample_config.samples {
             if s % 5000 == 0 {
                 if self.stop() {
-                    println!("In sampling stop");
+                    info!("In sampling stop");
                     break;
                 }
             }
@@ -387,7 +387,7 @@ fn merge_grids(config: &SampleConfig, grids: Vec<CountGrid>) -> CountGrid {
 async fn merge_results(
     config: Arc<SampleConfig>,
     results: &Vec<&Vec<CountGrid>>,
-) -> Vec<NormalizedGrid> {
+) -> Vec<CountGrid> {
     let cutoff_count = config.cutoffs.len();
     let mut tasks = Vec::with_capacity(cutoff_count);
     for cutoff_index in 0..cutoff_count {
@@ -396,9 +396,7 @@ async fn merge_results(
             count_grids.push(results[w][cutoff_index].clone());
         }
         let c = config.clone();
-        tasks.push(tokio::spawn(async move {
-            merge_grids(&c, count_grids).to_normalized_grid()
-        }));
+        tasks.push(tokio::spawn(async move { merge_grids(&c, count_grids) }));
     }
 
     let mut result = Vec::with_capacity(cutoff_count);
@@ -418,7 +416,11 @@ async fn run_worker(mut state_arc: Arc<WorkerState>) {
 }
 
 async fn async_main(config: Arc<SampleConfig>, cli_options: &SampleOptions) -> EscapeResult {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_timer(tracing_subscriber::fmt::time::uptime())
+        .with_thread_ids(true)
+        .with_max_level(&cli_options.verbosity)
+        .init();
 
     let c = Comptroller::new(&cli_options.duration).await;
 

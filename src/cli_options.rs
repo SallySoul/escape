@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use structopt::StructOpt;
+use crate::types::Verbosity;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "escape")]
@@ -25,6 +26,10 @@ pub struct SampleOptions {
     /// Path to store partial image
     #[structopt(short, long, parse(from_os_str))]
     pub output: PathBuf,
+
+    /// Path to store partial image
+    #[structopt(short, long, default_value = "info")]
+    pub verbosity: Verbosity,
 }
 
 #[derive(StructOpt, Debug)]
@@ -33,7 +38,12 @@ pub struct DrawOptions {
     #[structopt(short, long, parse(from_os_str))]
     pub config: PathBuf,
 
-    /// Path to store partial image
+    /// Path to sampling result
+    #[structopt(short, long, parse(from_os_str))]
+    pub histogram: PathBuf,
+
+    /// Path to store image output
+    /// TODO: Find what acceptable image types are
     #[structopt(short, long, parse(from_os_str))]
     pub output: PathBuf,
 }
