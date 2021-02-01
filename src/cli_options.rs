@@ -30,6 +30,10 @@ pub struct SampleOptions {
     /// Path to store partial image
     #[structopt(short, long, default_value = "info")]
     pub verbosity: Verbosity,
+
+    /// Use pretty logging
+    #[structopt(short, long)]
+    pub pretty_logging: bool,
 }
 
 #[derive(StructOpt, Debug)]

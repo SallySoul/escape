@@ -1,5 +1,6 @@
+use parking_lot::RwLock;
 use rand::distributions::Distribution;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use std::io::BufReader;
 
@@ -8,8 +9,9 @@ use crate::config::{SampleConfig, ViewConfig};
 use crate::histogram_result::HistogramResult;
 use crate::types::{Complex, CountGrid, EscapeResult};
 
-use tracing::{info, trace};
+use tracing::{error, info, trace};
 
+/// Randomly sample a complex number with a norm less than radius
 fn radius_sample(radius: f64) -> Complex {
     let mut rng = rand::thread_rng();
     let range = rand::distributions::Uniform::from(-radius..radius);
@@ -22,11 +24,13 @@ fn radius_sample(radius: f64) -> Complex {
     }
 }
 
+/// Random sample fro [0..1)
 fn random_prob() -> f64 {
     let mut rng = rand::thread_rng();
     rand::distributions::Uniform::from(0.0..1.0).sample(&mut rng)
 }
 
+/// Find the grid coords for a given complex number and view config
 pub fn project_onto_view(view: &ViewConfig, c: &Complex) -> Option<(usize, usize)> {
     let x_fp = ((c.re - view.center.re) * view.zoom) + 0.5;
     let y_fp = ((c.im - view.center.im) * view.zoom) + 0.5;
@@ -45,6 +49,7 @@ pub fn project_onto_view(view: &ViewConfig, c: &Complex) -> Option<(usize, usize
     }
 }
 
+/// Utility used to synchronize workers
 #[derive(Debug)]
 pub struct StopSwitch {
     stop: bool,
@@ -58,7 +63,7 @@ impl StopSwitch {
         tokio::spawn(ctrl_c_handler(result.clone()));
 
         if let Some(seconds) = maybe_duration {
-            tokio::spawn(duration_handler(result.clone(), seconds.clone()));
+            tokio::spawn(duration_handler(result.clone(), *seconds));
         }
 
         result
@@ -72,17 +77,25 @@ impl StopSwitch {
 async fn ctrl_c_handler(switch: ARStopSwitch) -> EscapeResult {
     loop {
         tokio::signal::ctrl_c().await?;
-        info!("CTRL C pressed!");
-        let mut s = switch.write().unwrap();
-        s.stop = true;
+        let mut s = switch.write();
+        if s.stop {
+            error!("Stop Switch already triggered");
+        } else {
+            info!("CTRL C pressed!");
+            s.stop = true;
+        }
     }
 }
 
 async fn duration_handler(switch: ARStopSwitch, seconds: u64) -> EscapeResult {
     tokio::time::sleep(std::time::Duration::from_secs(seconds)).await;
-    info!("Duration up");
-    let mut s = switch.write().unwrap();
-    s.stop = true;
+    let mut s = switch.write();
+    if s.stop {
+        error!("Stop Switch already triggered");
+    } else {
+        info!("Duration complete");
+        s.stop = true;
+    }
     Ok(())
 }
 
@@ -99,7 +112,7 @@ pub struct WorkerState {
 
 impl WorkerState {
     pub fn new(sample_config: &SampleConfig, stop_switch: ARStopSwitch) -> WorkerState {
-        let cutoff = sample_config.cutoffs.last().unwrap().clone();
+        let cutoff = *sample_config.cutoffs.last().unwrap();
         let view = sample_config.view;
         WorkerState {
             sample_config: sample_config.clone(),
@@ -119,7 +132,7 @@ impl WorkerState {
     #[tracing::instrument(skip(self))]
     fn evaluate(&mut self, c: &Complex) -> bool {
         self.orbit_buffer.clear();
-        let mut z = c.clone();
+        let mut z = *c;
         let mut iteration = 0;
         while z.norm_sqr() <= self.norm_cutoff_sqr && iteration <= self.iteration_cutoff {
             self.orbit_buffer.push(z);
@@ -128,11 +141,7 @@ impl WorkerState {
         }
 
         // Did point escape?
-        if z.norm_sqr() > self.norm_cutoff_sqr || iteration != self.iteration_cutoff {
-            true
-        } else {
-            false
-        }
+        z.norm_sqr() > self.norm_cutoff_sqr || iteration != self.iteration_cutoff
     }
 
     /// The contribution of a proposed value c
@@ -149,10 +158,10 @@ impl WorkerState {
     fn orbit_intersections(&mut self) -> usize {
         let mut result = 0;
         for c in &self.orbit_buffer {
-            if let Some(_) = self.project(&c) {
+            if self.project(&c).is_some() {
                 result += 1;
             }
-            if let Some(_) = self.project(&c.conj()) {
+            if self.project(&c.conj()).is_some() {
                 result += 1;
             }
         }
@@ -165,7 +174,7 @@ impl WorkerState {
     fn record_orbit(&mut self) -> usize {
         let mut result = 0;
         for (i, cutoff) in self.sample_config.cutoffs.iter().enumerate() {
-            if self.orbit_buffer.len() <= cutoff.clone() {
+            if self.orbit_buffer.len() <= *cutoff {
                 for c in &self.orbit_buffer {
                     // Account for symetry by adding the point and its conjugate
                     if let Some((x, y)) = self.project(&c) {
@@ -248,7 +257,7 @@ impl WorkerState {
             }
         }
 
-        return self.find_initial_sample_r(&closest_sample, radius / 2.0, depth + 1);
+        self.find_initial_sample_r(&closest_sample, radius / 2.0, depth + 1)
     }
 
     /// Sampling with the Metropolis-Hastings algorithm is based on mutating a "good" sample
@@ -260,7 +269,7 @@ impl WorkerState {
         if random_prob() < self.sample_config.random_sample_prob {
             radius_sample(self.sample_config.norm_cutoff)
         } else {
-            let mut result = c.clone();
+            let mut result = *c;
             let r1 = 1.0 / view.zoom * 0.0001;
             let r2 = 1.0 / view.zoom * 0.1;
             let phi = random_prob() * 2.0 * std::f64::consts::PI;
@@ -285,17 +294,15 @@ impl WorkerState {
 
     #[tracing::instrument(skip(self))]
     fn run_metro_instance(&mut self) {
-        //println!("*** Starting Run");
         // TODO these need to be setup properly
         let mut z = match self.find_initial_sample() {
             Some(z) => z,
             None => {
-                println!("Failed to find initial sample");
+                info!("Failed to find initial sample");
                 return;
             }
         };
 
-        //println!("*** Found Initial Sample");
         let mut z_orbit_len = self.orbit_buffer.len();
         let z_orbit_intersections = self.orbit_intersections();
         let mut z_contrib = self.contribution(z_orbit_intersections);
@@ -304,11 +311,11 @@ impl WorkerState {
         let mut rejected_samples = 0;
         let mut outside_samples = 0;
 
-        //println!("*** Starting WarmUp");
-        for s in 0..self.sample_config.warm_up_samples {
+        let mut outside_streak = 0;
+        for warm_up_sample in 0..self.sample_config.warm_up_samples {
             if self.stop() {
-               info!("In warmup stop");
-               break;
+                info!("In warmup stop");
+                break;
             }
 
             let mutation = self.mutate(&z);
@@ -318,7 +325,15 @@ impl WorkerState {
             // If the mutation doesn't intersect at all, it's a dud
             if intersection_count == 0 {
                 outside_samples += 1;
+                outside_streak += 1;
                 continue;
+            } else {
+                outside_streak = 0;
+            }
+
+            if outside_streak > self.sample_config.outside_limit {
+                trace!(warm_up_sample, "Outside streak exceeded in warmp up");
+                return;
             }
 
             let mutation_contrib = self.contribution(intersection_count);
@@ -348,12 +363,10 @@ impl WorkerState {
         accepted_samples = 0;
         rejected_samples = 0;
         outside_samples = 0;
-        for s in 0..self.sample_config.samples {
-            if s % 5000 == 0 {
-                if self.stop() {
-                    info!("In sampling stop");
-                    break;
-                }
+        for sample in 0..self.sample_config.samples {
+            if self.stop() {
+                info!("In sampling stop");
+                break;
             }
 
             let mutation = self.mutate(&z);
@@ -364,7 +377,15 @@ impl WorkerState {
             // If the mutation doesn't intersect at all, it's a dud
             if intersection_count == 0 {
                 outside_samples += 1;
+                outside_streak += 1;
                 continue;
+            } else {
+                outside_streak = 0;
+            }
+
+            if outside_streak > self.sample_config.outside_limit {
+                trace!(sample, "Outside streak exceeded in sampling");
+                return;
             }
 
             let mutation_contrib = self.contribution(intersection_count);
@@ -393,18 +414,19 @@ impl WorkerState {
     }
 
     fn stop(&self) -> bool {
-        self.stop_switch.read().unwrap().stop()
+        self.stop_switch.read().stop()
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn run_worker(&mut self) {
+    pub fn run_worker(mut self) -> Self {
         let mut metro_instances = 0;
         while !self.stop() {
             metro_instances += 1;
             trace!(metro_instances, "Starting metro instance");
             self.run_metro_instance();
         }
-        println!("Ran {} metro instances", metro_instances);
+        info!("Ran {} metro instances", metro_instances);
+        self
     }
 }
 
@@ -425,16 +447,13 @@ fn merge_grids(config: &SampleConfig, grids: Vec<CountGrid>) -> CountGrid {
 }
 
 #[tracing::instrument(skip(config, results))]
-async fn merge_results(
-    config: Arc<SampleConfig>,
-    results: &Vec<&Vec<CountGrid>>,
-) -> Vec<CountGrid> {
+async fn merge_results(config: Arc<SampleConfig>, results: &[Vec<CountGrid>]) -> Vec<CountGrid> {
     let cutoff_count = config.cutoffs.len();
     let mut tasks = Vec::with_capacity(cutoff_count);
     for cutoff_index in 0..cutoff_count {
         let mut count_grids = Vec::with_capacity(results.len());
-        for w in 0..results.len() {
-            count_grids.push(results[w][cutoff_index].clone());
+        for result in results {
+            count_grids.push(result[cutoff_index].clone());
         }
         let c = config.clone();
         tasks.push(tokio::spawn(async move { merge_grids(&c, count_grids) }));
@@ -448,45 +467,41 @@ async fn merge_results(
     result
 }
 
-#[tracing::instrument(skip(state_arc))]
-async fn run_worker(mut state_arc: Arc<WorkerState>) {
-    unsafe {
-        let state = Arc::get_mut_unchecked(&mut state_arc);
-        state.run_worker();
-    };
-}
-
 async fn async_main(config: Arc<SampleConfig>, cli_options: &SampleOptions) -> EscapeResult {
-    tracing_subscriber::fmt()
+    let logger_builder = tracing_subscriber::fmt()
         .with_timer(tracing_subscriber::fmt::time::uptime())
         .with_thread_ids(true)
-        .with_max_level(&cli_options.verbosity)
-        .init();
+        .with_max_level(&cli_options.verbosity);
+
+    if cli_options.pretty_logging {
+        logger_builder.pretty().init()
+    } else {
+        logger_builder.init();
+    }
 
     let stop_switch = StopSwitch::new(&cli_options.duration).await;
-
-    let mut worker_states = Vec::with_capacity(cli_options.workers);
     let mut futures = Vec::with_capacity(cli_options.workers);
-    for i in 0..cli_options.workers {
-        worker_states.push(Arc::new(WorkerState::new(&config, stop_switch.clone())));
-        futures.push(tokio::spawn(run_worker(worker_states[i].clone())));
+    for worker in 0..cli_options.workers {
+        let s = stop_switch.clone();
+        let c = config.clone();
+        futures.push(tokio::spawn(async move {
+            let state = WorkerState::new(&c, s);
+            state.run_worker()
+        }));
+        trace!(worker, "Created worker future");
     }
     info!(cli_options.workers, "Started sampling workers");
 
     let mut results = Vec::with_capacity(cli_options.workers);
     for w in futures {
-        results.push(w.await.unwrap());
+        results.push(w.await.unwrap().grids);
     }
     info!("Sampling workers have completed");
 
-    let mut results = Vec::new();
-    for w in &worker_states {
-        results.push(&w.grids);
-    }
     let merged_grids = merge_results(config.clone(), &results).await;
     info!("Worker results have been merged");
 
-    HistogramResult::to_file(&config, &merged_grids, &cli_options.output)?;
+    HistogramResult::save(&config, &merged_grids, &cli_options.output)?;
     info!(
         "Result has been written to {}",
         &cli_options.output.display()

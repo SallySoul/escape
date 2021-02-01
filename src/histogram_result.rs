@@ -11,7 +11,7 @@ pub struct HistogramResult {
 }
 
 impl HistogramResult {
-    pub fn to_file(
+    pub fn save(
         config: &SampleConfig,
         grids: &[CountGrid],
         path: &std::path::Path,

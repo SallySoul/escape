@@ -45,6 +45,11 @@ pub struct SampleConfig {
     /// Default value is 100000
     #[serde(default = "SampleConfig::default_samples")]
     pub samples: usize,
+
+    /// End Metro-hastings run if this number of sampled orbits are sequencly outside the view
+    /// Default value is 5
+    #[serde(default = "SampleConfig::default_outside_limit")]
+    pub outside_limit: usize,
 }
 
 impl SampleConfig {
@@ -66,5 +71,9 @@ impl SampleConfig {
 
     fn default_random_sample_prob() -> f64 {
         0.2
+    }
+
+    fn default_outside_limit() -> usize {
+        5
     }
 }
