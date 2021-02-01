@@ -13,8 +13,11 @@ pub enum EscapeError {
     #[error("JSON Error")]
     Json(#[from] serde_json::error::Error),
 
-    #[error("Bad draw config")]
-    BadDrawConfig(String),
+    #[error("Incompatible draw config")]
+    IncompatibleDrawConfig(String),
+
+    #[error("Incompatible stl config")]
+    IncompatibleStlConfig(String),
 
     #[error("Incompatible Histograms")]
     IncompatibleHistograms,

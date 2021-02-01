@@ -114,7 +114,7 @@ impl WorkerState {
         let view = sample_config.view;
         WorkerState {
             sample_config: sample_config.clone(),
-            grids: vec![CountGrid::new(view.width, view.height); sample_config.cutoffs.len()],
+            grids: vec![CountGrid::zero(view.width, view.height); sample_config.cutoffs.len()],
             norm_cutoff_sqr: sample_config.norm_cutoff * sample_config.norm_cutoff,
             iteration_cutoff: cutoff,
             iteration_cutoff_f64: cutoff as f64,
@@ -437,7 +437,7 @@ impl WorkerState {
 
 #[tracing::instrument(skip(config, grids))]
 fn merge_grids(config: &SampleConfig, grids: Vec<CountGrid>) -> CountGrid {
-    let mut result = CountGrid::new(config.view.width, config.view.height);
+    let mut result = CountGrid::zero(config.view.width, config.view.height);
     for x in 0..config.view.width {
         for y in 0..config.view.height {
             let mut sum = 0;

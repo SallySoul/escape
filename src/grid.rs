@@ -1,16 +1,31 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Grid<N: num_traits::Num + Copy + Clone> {
+pub struct Grid<N: Copy + Clone> {
     boxes: Vec<N>,
     width: usize,
     height: usize,
 }
 
 impl<N: num_traits::Num + Copy + Clone> Grid<N> {
-    pub fn new(width: usize, height: usize) -> Grid<N> {
+    pub fn zero(width: usize, height: usize) -> Grid<N> {
         Grid {
             boxes: vec![N::zero(); width * height],
+            width,
+            height,
+        }
+    }
+
+    pub fn increment(&mut self, x: usize, y: usize) {
+        let temp = self.boxes[y * self.width + x] + N::one();
+        self.boxes[y * self.width + x] = temp;
+    }
+}
+
+impl<N: Copy + Clone> Grid<N> {
+    pub fn from(width: usize, height: usize, value: N) -> Grid<N> {
+        Grid {
+            boxes: vec![value; width * height],
             width,
             height,
         }
@@ -22,11 +37,6 @@ impl<N: num_traits::Num + Copy + Clone> Grid<N> {
 
     pub fn value(&self, x: usize, y: usize) -> N {
         self.boxes[y * self.width + x]
-    }
-
-    pub fn increment(&mut self, x: usize, y: usize) {
-        let temp = self.boxes[y * self.width + x] + N::one();
-        self.boxes[y * self.width + x] = temp;
     }
 }
 
@@ -42,7 +52,7 @@ impl Grid<u64> {
         }
 
         let max_fp = max as f64;
-        let mut result = Grid::new(self.width, self.height);
+        let mut result = Grid::zero(self.width, self.height);
 
         if max == 0 {
             return result;

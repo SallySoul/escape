@@ -1,0 +1,16 @@
+{
+  "cutoffs": [
+    500000
+  ],
+  "view": {
+    "width": 800,
+    "height": 800,
+    "zoom": 0.25,
+    "center": [
+      0.0,
+      0.0
+    ]
+  },
+  "samples": 200000,
+  "warm_up_samples": 2000
+}

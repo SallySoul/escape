@@ -1,32 +1,45 @@
 use crate::cli_options::DrawOptions;
 use crate::config::{DrawConfig, SampleConfig};
 use crate::histogram_result::HistogramResult;
-use crate::types::{EscapeError, EscapeResult, NormalizedGrid};
+use crate::types::{EscapeResult, NormalizedGrid};
 
 use std::io::BufReader;
+use tracing::info;
 
 pub fn run_draw(draw_options: &DrawOptions) -> EscapeResult {
+    let logger_builder = tracing_subscriber::fmt()
+        .with_timer(tracing_subscriber::fmt::time::uptime())
+        .with_thread_ids(true)
+        .with_max_level(&draw_options.verbosity);
+    if draw_options.pretty_logging {
+        logger_builder.pretty().init()
+    } else {
+        logger_builder.init();
+    }
+    info!("Starting draw operation");
+
     let mut config_reader = BufReader::new(std::fs::File::open(&draw_options.config)?);
     let draw_config: DrawConfig = serde_json::from_reader(&mut config_reader)?;
-    let (sample_config, count_grids) = HistogramResult::from_file(&draw_options.histogram)?;
+    info!("Loaded draw config {}", &draw_options.config.display());
 
-    let color_count = draw_config.colors.len();
-    let cutoff_count = sample_config.cutoffs.len();
-    if color_count != cutoff_count {
-        let error_message = format!(
-            "Mismatched configs, sample config had {} cutoffs, but draw config had {} colors",
-            cutoff_count, color_count
-        );
-        return Err(EscapeError::BadDrawConfig(error_message));
-    }
+    let (sample_config, count_grids) = HistogramResult::from_file(&draw_options.histogram)?;
+    draw_config.compatible(&sample_config)?;
+    info!(
+        "Loaded histogram result {}",
+        &draw_options.histogram.display()
+    );
 
     let normalized_grids: Vec<NormalizedGrid> = count_grids
         .iter()
         .map(|grid| grid.to_normalized_grid())
         .collect();
+    info!("Grids have been normalized");
 
     let image = color_grids(&draw_config, &sample_config, &normalized_grids);
+    info!("Image generated");
+
     image.save(&draw_options.output)?;
+    info!("Result saved to {}", &draw_options.output.display());
 
     Ok(())
 }

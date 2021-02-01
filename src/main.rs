@@ -19,8 +19,11 @@ mod types;
 /// Buddhabrot sampling implementation
 mod worker;
 
-/// Implementation to draw buddhabrot samples
+/// Implementation to draw buddhabrot histogram result
 mod draw;
+
+/// Implementation to create STL height maps from histogram result
+mod stl;
 
 use crate::cli_options::CliOptions;
 use crate::types::EscapeResult;
@@ -38,6 +41,9 @@ fn main() -> EscapeResult {
         }
         CliOptions::Merge(merge_options) => {
             worker::run_merge(&merge_options)?;
+        }
+        CliOptions::Stl(stl_options) => {
+            stl::run_stl(&stl_options)?;
         }
     }
     Ok(())
