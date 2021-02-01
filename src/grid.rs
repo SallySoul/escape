@@ -43,6 +43,11 @@ impl Grid<u64> {
 
         let max_fp = max as f64;
         let mut result = Grid::new(self.width, self.height);
+
+        if max == 0 {
+            return result;
+        }
+
         for x in 0..self.width {
             for y in 0..self.height {
                 result.set_value(self.value(x, y) as f64 / max_fp, x, y);

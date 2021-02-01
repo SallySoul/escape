@@ -44,9 +44,10 @@ fn color_grids(
             // Caclulate floating point  color
             let mut rgb_fp: [f64; 3] = draw_config.background_color;
             for (cutoff_index, rgb_color) in draw_config.colors.iter().enumerate() {
-                let value = grids[cutoff_index].value(x, y);
+                let power = draw_config.powers[cutoff_index];
+                let value = grids[cutoff_index].value(x, y).powf(power);
                 for i in 0..3 {
-                    rgb_fp[i] += value * rgb_color[i];
+                    rgb_fp[i] += value * (rgb_color[i] as f64 / 255.0);
                 }
             }
 
