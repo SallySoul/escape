@@ -7,6 +7,7 @@ use structopt::StructOpt;
 pub enum CliOptions {
     Sample(SampleOptions),
     Draw(DrawOptions),
+    Merge(MergeOptions),
 }
 
 #[derive(StructOpt, Debug)]
@@ -16,7 +17,7 @@ pub struct SampleOptions {
     pub config: PathBuf,
 
     /// The number of worker threads to spawn (more threads may be used)
-    #[structopt(short, long)]
+    #[structopt(short, long, default_value = "1")]
     pub workers: usize,
 
     /// Set a timeout for running workers
@@ -50,4 +51,27 @@ pub struct DrawOptions {
     /// TODO: Find what acceptable image types are
     #[structopt(short, long, parse(from_os_str))]
     pub output: PathBuf,
+}
+
+#[derive(StructOpt, Debug)]
+pub struct MergeOptions {
+    /// Paths to histogram results
+    pub histograms: Vec<PathBuf>,
+
+    /// Path to store merged histogram output
+    /// TODO: Find what acceptable image types are
+    #[structopt(short, long, parse(from_os_str))]
+    pub output: PathBuf,
+
+    /// The number of worker threads to spawn (more threads may be used)
+    #[structopt(short, long, default_value = "1")]
+    pub workers: usize,
+
+    /// Path to store partial image
+    #[structopt(short, long, default_value = "info")]
+    pub verbosity: Verbosity,
+
+    /// Use pretty logging
+    #[structopt(short, long)]
+    pub pretty_logging: bool,
 }

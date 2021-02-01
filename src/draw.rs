@@ -8,7 +8,6 @@ use std::io::BufReader;
 pub fn run_draw(draw_options: &DrawOptions) -> EscapeResult {
     let mut config_reader = BufReader::new(std::fs::File::open(&draw_options.config)?);
     let draw_config: DrawConfig = serde_json::from_reader(&mut config_reader)?;
-
     let (sample_config, count_grids) = HistogramResult::from_file(&draw_options.histogram)?;
 
     let color_count = draw_config.colors.len();
@@ -43,7 +42,7 @@ fn color_grids(
     for x in 0..width {
         for y in 0..height {
             // Caclulate floating point  color
-            let mut rgb_fp: [f64; 3] = [0.0, 0.0, 0.0];
+            let mut rgb_fp: [f64; 3] = draw_config.background_color;
             for (cutoff_index, rgb_color) in draw_config.colors.iter().enumerate() {
                 let value = grids[cutoff_index].value(x, y);
                 for i in 0..3 {

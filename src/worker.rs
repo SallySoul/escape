@@ -1,15 +1,13 @@
 use parking_lot::RwLock;
 use rand::distributions::Distribution;
-use std::sync::Arc;
-
 use std::io::BufReader;
+use std::sync::Arc;
+use tracing::{error, info, trace, warn};
 
-use crate::cli_options::SampleOptions;
+use crate::cli_options::{MergeOptions, SampleOptions};
 use crate::config::{SampleConfig, ViewConfig};
 use crate::histogram_result::HistogramResult;
-use crate::types::{Complex, CountGrid, EscapeResult};
-
-use tracing::{error, info, trace};
+use crate::types::{Complex, CountGrid, EscapeError, EscapeResult};
 
 /// Randomly sample a complex number with a norm less than radius
 fn radius_sample(radius: f64) -> Complex {
@@ -129,7 +127,6 @@ impl WorkerState {
         project_onto_view(&self.sample_config.view, c)
     }
 
-    #[tracing::instrument(skip(self))]
     fn evaluate(&mut self, c: &Complex) -> bool {
         self.orbit_buffer.clear();
         let mut z = *c;
@@ -263,7 +260,6 @@ impl WorkerState {
     /// Sampling with the Metropolis-Hastings algorithm is based on mutating a "good" sample
     /// Some of the time we want to perturb the last good sample
     /// Other times we want to try a complelety new point
-    #[tracing::instrument(skip(self))]
     fn mutate(&self, c: &Complex) -> Complex {
         let view = self.sample_config.view;
         if random_prob() < self.sample_config.random_sample_prob {
@@ -298,7 +294,7 @@ impl WorkerState {
         let mut z = match self.find_initial_sample() {
             Some(z) => z,
             None => {
-                info!("Failed to find initial sample");
+                warn!("Failed to find initial sample");
                 return;
             }
         };
@@ -326,14 +322,19 @@ impl WorkerState {
             if intersection_count == 0 {
                 outside_samples += 1;
                 outside_streak += 1;
+                if outside_streak > self.sample_config.outside_limit {
+                    warn!(
+                        warm_up_sample,
+                        accepted_samples,
+                        rejected_samples,
+                        outside_samples,
+                        "Outside streak exceeded in warm up"
+                    );
+                    return;
+                }
                 continue;
             } else {
                 outside_streak = 0;
-            }
-
-            if outside_streak > self.sample_config.outside_limit {
-                trace!(warm_up_sample, "Outside streak exceeded in warmp up");
-                return;
             }
 
             let mutation_contrib = self.contribution(intersection_count);
@@ -378,14 +379,20 @@ impl WorkerState {
             if intersection_count == 0 {
                 outside_samples += 1;
                 outside_streak += 1;
+
+                if outside_streak > self.sample_config.outside_limit {
+                    trace!(
+                        sample,
+                        accepted_samples,
+                        rejected_samples,
+                        outside_samples,
+                        "Outside streak exceeded in sampling"
+                    );
+                    return;
+                }
                 continue;
             } else {
                 outside_streak = 0;
-            }
-
-            if outside_streak > self.sample_config.outside_limit {
-                trace!(sample, "Outside streak exceeded in sampling");
-                return;
             }
 
             let mutation_contrib = self.contribution(intersection_count);
@@ -447,7 +454,10 @@ fn merge_grids(config: &SampleConfig, grids: Vec<CountGrid>) -> CountGrid {
 }
 
 #[tracing::instrument(skip(config, results))]
-async fn merge_results(config: Arc<SampleConfig>, results: &[Vec<CountGrid>]) -> Vec<CountGrid> {
+async fn merge_results(
+    config: Arc<SampleConfig>,
+    results: &[Vec<CountGrid>],
+) -> Result<Vec<CountGrid>, EscapeError> {
     let cutoff_count = config.cutoffs.len();
     let mut tasks = Vec::with_capacity(cutoff_count);
     for cutoff_index in 0..cutoff_count {
@@ -461,13 +471,13 @@ async fn merge_results(config: Arc<SampleConfig>, results: &[Vec<CountGrid>]) ->
 
     let mut result = Vec::with_capacity(cutoff_count);
     for task in tasks {
-        result.push(task.await.unwrap());
+        result.push(task.await?);
     }
 
-    result
+    Ok(result)
 }
 
-async fn async_main(config: Arc<SampleConfig>, cli_options: &SampleOptions) -> EscapeResult {
+async fn async_sampling(cli_options: &SampleOptions) -> EscapeResult {
     let logger_builder = tracing_subscriber::fmt()
         .with_timer(tracing_subscriber::fmt::time::uptime())
         .with_thread_ids(true)
@@ -478,6 +488,10 @@ async fn async_main(config: Arc<SampleConfig>, cli_options: &SampleOptions) -> E
     } else {
         logger_builder.init();
     }
+
+    let mut config_reader = BufReader::new(std::fs::File::open(&cli_options.config)?);
+    let config: Arc<SampleConfig> = Arc::new(serde_json::from_reader(&mut config_reader)?);
+    trace!("Sample config loaded: {}", &cli_options.config.display());
 
     let stop_switch = StopSwitch::new(&cli_options.duration).await;
     let mut futures = Vec::with_capacity(cli_options.workers);
@@ -494,11 +508,11 @@ async fn async_main(config: Arc<SampleConfig>, cli_options: &SampleOptions) -> E
 
     let mut results = Vec::with_capacity(cli_options.workers);
     for w in futures {
-        results.push(w.await.unwrap().grids);
+        results.push(w.await?.grids);
     }
     info!("Sampling workers have completed");
 
-    let merged_grids = merge_results(config.clone(), &results).await;
+    let merged_grids = merge_results(config.clone(), &results).await?;
     info!("Worker results have been merged");
 
     HistogramResult::save(&config, &merged_grids, &cli_options.output)?;
@@ -512,16 +526,79 @@ async fn async_main(config: Arc<SampleConfig>, cli_options: &SampleOptions) -> E
 
 pub fn run_sampling(sample_options: &SampleOptions) -> EscapeResult {
     // Note that we add one extra thread for timers / signal handlers
-    let rt = tokio::runtime::Builder::new_multi_thread()
+    let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(sample_options.workers + 1)
         .enable_all()
         .build()
         .unwrap();
 
-    let mut config_reader = BufReader::new(std::fs::File::open(&sample_options.config)?);
-    let config: Arc<SampleConfig> = Arc::new(serde_json::from_reader(&mut config_reader)?);
+    runtime.block_on(async_sampling(&sample_options))?;
 
-    rt.block_on(async_main(config, &sample_options))?;
+    Ok(())
+}
+
+async fn async_merge(cli_options: &MergeOptions) -> EscapeResult {
+    let logger_builder = tracing_subscriber::fmt()
+        .with_timer(tracing_subscriber::fmt::time::uptime())
+        .with_thread_ids(true)
+        .with_max_level(&cli_options.verbosity);
+
+    if cli_options.pretty_logging {
+        logger_builder.pretty().init()
+    } else {
+        logger_builder.init();
+    }
+
+    let histogram_count = cli_options.histograms.len();
+    if histogram_count == 0 {
+        warn!("No histograms");
+        return Ok(());
+    }
+
+    // Open all the files / HistogramResults
+    let mut result_futures = Vec::with_capacity(histogram_count);
+    for path in cli_options.histograms.clone() {
+        result_futures.push(tokio::spawn(
+            async move { HistogramResult::from_file(&path) },
+        ));
+    }
+
+    let mut configs = Vec::with_capacity(histogram_count);
+    let mut results = Vec::with_capacity(histogram_count);
+    for r in result_futures {
+        let histogram = r.await??;
+        configs.push(histogram.0);
+        results.push(histogram.1)
+    }
+    info!("Files loaded");
+
+    // Check compatability
+    let mut check = true;
+    for i in 1..configs.len() {
+        check |= configs[i - 1].compatible(&configs[i]);
+    }
+    if !check {
+        return Err(EscapeError::IncompatibleHistograms);
+    }
+    info!("Configs are compatible");
+
+    let result = merge_results(configs[0].clone(), &results).await?;
+    info!("Results have been merged");
+
+    HistogramResult::save(&configs[0], &result, &cli_options.output)?;
+    info!("Result saved to {}", cli_options.output.display());
+
+    Ok(())
+}
+
+pub fn run_merge(merge_options: &MergeOptions) -> EscapeResult {
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(merge_options.workers)
+        .enable_all()
+        .build()
+        .unwrap();
+
+    rt.block_on(async_merge(&merge_options))?;
 
     Ok(())
 }

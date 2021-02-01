@@ -16,8 +16,14 @@ pub enum EscapeError {
     #[error("Bad draw config")]
     BadDrawConfig(String),
 
+    #[error("Incompatible Histograms")]
+    IncompatibleHistograms,
+
     #[error("Couldn't part verbosity")]
     VerbosityParse(String),
+
+    #[error("Tokio join error")]
+    JoinError(#[from] tokio::task::JoinError),
 }
 
 pub type EscapeResult = Result<(), EscapeError>;

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct DrawConfig {
-    pub colors: Vec<[f64; 4]>,
+    pub colors: Vec<[f64; 3]>,
     pub background_color: [f64; 3],
 }
 
@@ -75,5 +75,11 @@ impl SampleConfig {
 
     fn default_outside_limit() -> usize {
         5
+    }
+
+    pub fn compatible(&self, other: &Self) -> bool {
+        self.cutoffs.len() == other.cutoffs.len()
+            && self.view.width == other.view.width
+            && self.view.height == other.view.height
     }
 }

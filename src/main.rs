@@ -36,6 +36,9 @@ fn main() -> EscapeResult {
         CliOptions::Draw(draw_options) => {
             draw::run_draw(&draw_options)?;
         }
+        CliOptions::Merge(merge_options) => {
+            worker::run_merge(&merge_options)?;
+        }
     }
     Ok(())
 }
