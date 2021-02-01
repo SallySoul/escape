@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/sallysoul/escape/workflows/CI/badge.svg)](https://github.com/sallysoul/escape/actions)
 
-Escape is a configurable renderer for the [buddhabrot](https://en.wikipedia.org/wiki/Buddhabrot).
+Escape is a configurable sampling and rendering for the [buddhabrot](https://en.wikipedia.org/wiki/Buddhabrot).
 
 ## Installing
 
@@ -25,12 +25,15 @@ cargo install --path .
 
 ## Usage
 
-There are 2 - 3 steps to getting pictures out of escape.
-
 ```
 $ escape --help
 
 ```
+
+There are 2 - 3 steps to getting renders out of escape.
+First, a histogram file must be created using the `sample` command, in conjunction with a `SampleConfig` file.
+Multiple histogram files can be merged with the `merge` command.
+A histogram file can than be rendered using either the `draw` or `stl` commands using their respective config files.
 
 ### Sampling
 
@@ -39,11 +42,41 @@ $ escape sample --help
 
 ```
 
+Sampling involves finding orbits that intersect the configured view.
+The sample command will run-indefinitley until either `ctlr-c` is pressed or the a specified duration is up.
+If running on a cluster I would recoment one process per machine with a worker for every logical core.
+
+For example, on an eight core machine one might run sampling for four hours using the following command.
+(Though `ctrl-c` could be passed before the time is up).
+
+```
+$ escape sample \
+  --config configs/sample_config/AB_View_2.json \
+  --output results/AB_View_2_histogram.json \
+  --workers 8 \
+  --duration 14400
+```
+
+Sampling is highly configurable, using a `SampleConfig` saved as a json file.
+Examples of these files can be found in [`configs/sample_configs`](configs/sample_configs).
+
 ### Merging
 
 ```
 $ escape merge --help
 
+```
+
+Merging results can be useful if the sampling time needs to be segmented over multiple intervals in time or machines in space.
+For example, the sampling run for the title image was run across 40 machines in a cluster, which produced 40 histogram files.
+The merge tool can combine these results into one file suitable for rendering.
+As with sampling, the number of workers should at most be the number of logical cores, though if the number of results is smaller thats the maximum needed.
+
+```
+$ escape merge \
+  --output merged_result.json \
+  --worker 8 \
+  result_hostname*.json
 ```
 
 ### Drawing
@@ -53,10 +86,13 @@ $ escape draw --help
 
 ```
 
+Drawing is highly configurable, using a `DrawConfig` saved as a json file.
+Examples of these files can be found in [`configs/draw_configs`](configs/draw_configs).
+
 ## Implementation Details
 
-* Metropolis-Hastings based sampling, based on Alexander Boswell's work.
-* Additionally, conjugate orbits used to inform sampling
+* Metropolis-Hastings sampling, based on Alexander Boswell's work.
+* Conjugate orbits used to inform sampling
 * Multi-threaded sampling with tokio
 * Double precision floating points used (shrug)
 
@@ -64,8 +100,15 @@ $ escape draw --help
 
 ### [The Buddhabrot](http://www.steckles.com/buddha/) by Alexander Boswell
 
+
 Alexander Boswell's work as described here is novel and often referenced in other writing about the buddhabrot set.
-The key takeaway is to make use of the Metropolis-Hastings algorithm to enable expedient rendering of zoomed regions
+The key takeaway is to make use of the Metropolis-Hastings algorithm to enable expedient rendering of zoomed regions.
+In addition, the source Alexander released was critical for the development of this project.
+Notable places I drew from this work include:
+
+* Port of the metropolis-hastings mutation logic..
+* Port of the algorithm for finding an initial sample for a metropolis hastings run.
+* The suggested views in the source have been included as sample configs, `configs/sample/AB_View_*.json`.
 
 ### [Rendering a Buddhabrot at 4K and Other Bad Ideas](https://benedikt-bitterli.me/buddhabrot/) by Benedikt Bitterli
 
