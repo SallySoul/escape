@@ -6,6 +6,8 @@
 
 Escape contains configurable tools for sampling and rendering the [buddhabrot](https://en.wikipedia.org/wiki/Buddhabrot).
 
+Escape is still under construction, and is not feature complete or stable.
+
 ## Usage
 
 ```
