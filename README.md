@@ -4,24 +4,7 @@
 
 [![CI](https://github.com/sallysoul/escape/workflows/CI/badge.svg)](https://github.com/sallysoul/escape/actions)
 
-Escape is a configurable sampling and rendering for the [buddhabrot](https://en.wikipedia.org/wiki/Buddhabrot).
-
-## Installing
-
-Gotta build it from source.
-This requires the rust nightly toolchain installed.
-If you do not have that installed, the go-to way of aquiring it is [rustup](https://rustup.rs).
-
-
-```
-# Currently using nightly, 1.51
-rustup default nightly
-
-# clone and build
-git clone https://github.com/SallySoul/escape.git
-cd escape
-cargo install --path .
-```
+Escape contains configurable tools for sampling and rendering the [buddhabrot](https://en.wikipedia.org/wiki/Buddhabrot).
 
 ## Usage
 
@@ -89,12 +72,43 @@ $ escape draw --help
 Drawing is highly configurable, using a `DrawConfig` saved as a json file.
 Examples of these files can be found in [`configs/draw_configs`](configs/draw_configs).
 
+### Export as STL
+
+```
+$ escape stl --help
+```
+
+STL relief maps can be generated in a way similiar to the draw command.
+
+## Building from source 
+
+`escape` is built using the rust nightly toolchain.
+If you do not have that installed, the go-to way of aquiring it is [rustup](https://rustup.rs).
+
+
+```
+# Currently using nightly, 1.51
+rustup default nightly
+
+# clone and build
+git clone https://github.com/SallySoul/escape.git
+cd escape
+cargo install --path .
+```
+
 ## Implementation Details
 
-* Metropolis-Hastings sampling, based on Alexander Boswell's work.
-* Conjugate orbits used to inform sampling
-* Multi-threaded sampling with tokio
+* Metropolis-Hastings sampling
+  - Enables effective sampling for deep zooms.
+  - Configurable to avoid sampling bias / noise.
+  - Based on Alexander Boswell's work.
+* Conjugate orbits used to inform sampling.
+  - Minor optimzation, evaluating orbits for high iteration cutoffs is expensive.
+* Multi-threaded sampling with tokio.
+  - No known limits to scaling, can take advantage of high core-count processors.
 * Double precision floating points used (shrug)
+  - I think it's neat.
+  - Some processors might not.
 
 ## Resources / Further Reading
 
@@ -124,3 +138,4 @@ This is a comprehensive resource, including history of the technique and compili
 ### [budhabrot - 2002](https://iquilezles.org/www/articles/budhabrot/budhabrot.html) by Inigo Quilez
 
 Inigo's article describe his personal attempts working on rendering the buddha brot.
+I have always found Inigo's articles worth the read.
