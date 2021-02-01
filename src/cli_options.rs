@@ -2,6 +2,7 @@ use crate::types::Verbosity;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
+/// Utilities for working sampling and drawing the buddhabrot
 #[derive(StructOpt, Debug)]
 #[structopt(name = "escape")]
 pub enum CliOptions {
@@ -10,6 +11,7 @@ pub enum CliOptions {
     Merge(MergeOptions),
 }
 
+/// Sample the buddhabrot and create a histogram result
 #[derive(StructOpt, Debug)]
 pub struct SampleOptions {
     /// Path to the sample config file
@@ -37,6 +39,7 @@ pub struct SampleOptions {
     pub pretty_logging: bool,
 }
 
+/// Render histogram result to an image
 #[derive(StructOpt, Debug)]
 pub struct DrawOptions {
     /// Path to the draw config file
@@ -53,13 +56,13 @@ pub struct DrawOptions {
     pub output: PathBuf,
 }
 
+/// Combine multiple compatible histogram results
 #[derive(StructOpt, Debug)]
 pub struct MergeOptions {
     /// Paths to histogram results
     pub histograms: Vec<PathBuf>,
 
     /// Path to store merged histogram output
-    /// TODO: Find what acceptable image types are
     #[structopt(short, long, parse(from_os_str))]
     pub output: PathBuf,
 

@@ -1,12 +1,15 @@
 use crate::types::Complex;
 use serde::{Deserialize, Serialize};
 
+/// DrawConfig is used to color histogram results
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct DrawConfig {
     pub colors: Vec<[f64; 3]>,
     pub background_color: [f64; 3],
 }
 
+/// ViewConfig describes what region of the buddhabrot to render
+/// as well as the grid to use when creating histograms
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub struct ViewConfig {
     pub center: Complex,
@@ -17,7 +20,11 @@ pub struct ViewConfig {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct SampleConfig {
+    /// When sampling, we record orbits in different histograms depending
+    /// on the length of the orbit before it escapes.
     pub cutoffs: Vec<usize>,
+
+    /// The region of the buddhabrot to render
     pub view: ViewConfig,
 
     /// Depth Limit for the initial samples search
