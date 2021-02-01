@@ -611,7 +611,7 @@ mod tests {
             let c = radius_sample(2.0);
             assert!(c.re >= -2.0);
             assert!(c.re <= 2.0);
-            assert!(c.im >= 0.0);
+            assert!(c.im >= -2.0);
             assert!(c.im <= 2.0);
             assert!(c.norm_sqr() <= 4.0);
         }
@@ -628,7 +628,12 @@ mod tests {
 
     #[test]
     fn test_project_1() {
-        let config = ViewConfig::new(Complex::new(0.0, 0.0), 1.0, 500, 400);
+        let config = ViewConfig {
+            center: Complex::new(0.0, 0.0),
+            zoom: 1.0,
+            width: 500,
+            height: 400,
+        };
 
         let pixel_eps = 0.00001;
 
@@ -663,7 +668,12 @@ mod tests {
 
     #[test]
     fn test_project_2() {
-        let config = ViewConfig::new(Complex::new(-1.0, 2.0), 2.0, 500, 400);
+        let config = ViewConfig {
+            center: Complex::new(-1.0, 2.0),
+            zoom: 2.0,
+            width: 500,
+            height: 400,
+        };
 
         let pixel_eps = 0.00001;
 
