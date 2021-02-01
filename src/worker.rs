@@ -412,11 +412,9 @@ impl WorkerState {
             }
         }
 
-        trace!(
+        info!(
             accepted_samples,
-            rejected_samples,
-            outside_samples,
-            "Sampling complete"
+            rejected_samples, outside_samples, "Sampling complete"
         );
     }
 
