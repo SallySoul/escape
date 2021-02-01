@@ -1,13 +1,5 @@
-use crate::types::Complex;
+use crate::types::{Complex, EscapeError, EscapeResult};
 use serde::{Deserialize, Serialize};
-
-/// DrawConfig is used to color histogram results
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct DrawConfig {
-    pub colors: Vec<[u8; 3]>,
-    pub powers: Vec<f64>,
-    pub background_color: [f64; 3],
-}
 
 /// ViewConfig describes what region of the buddhabrot to render
 /// as well as the grid to use when creating histograms
@@ -82,12 +74,83 @@ impl SampleConfig {
     }
 
     fn default_outside_limit() -> usize {
-        5
+        100
     }
 
     pub fn compatible(&self, other: &Self) -> bool {
         self.cutoffs.len() == other.cutoffs.len()
             && self.view.width == other.view.width
             && self.view.height == other.view.height
+    }
+}
+
+/// StlConfig is used to color histogram results
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct StlConfig {
+    pub contributions: Vec<f32>,
+    pub powers: Vec<f64>,
+    pub width: f32,
+    pub height: f32,
+    pub min_depth: f32,
+    pub relief_height: f32,
+}
+
+impl StlConfig {
+    pub fn compatible(&self, sample_config: &SampleConfig) -> EscapeResult {
+        let cutoff_count = sample_config.cutoffs.len();
+        let contribution_count = self.contributions.len();
+        let powers_count = self.powers.len();
+
+        if contribution_count != cutoff_count {
+            let msg = format!(
+                "Sample config had {} cutoffs, stl config had {} contributions",
+                cutoff_count, contribution_count
+            );
+            return Err(EscapeError::IncompatibleStlConfig(msg));
+        }
+
+        if powers_count != cutoff_count {
+            let msg = format!(
+                "Sample config had {} cutoffs, stl config had {} powers",
+                cutoff_count, powers_count
+            );
+            return Err(EscapeError::IncompatibleStlConfig(msg));
+        }
+
+        Ok(())
+    }
+}
+
+/// DrawConfig is used to color histogram results
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct DrawConfig {
+    pub colors: Vec<[u8; 3]>,
+    pub powers: Vec<f64>,
+    pub background_color: [f64; 3],
+}
+
+impl DrawConfig {
+    pub fn compatible(&self, sample_config: &SampleConfig) -> EscapeResult {
+        let cutoff_count = sample_config.cutoffs.len();
+        let colors_count = self.colors.len();
+        let powers_count = self.powers.len();
+
+        if colors_count != cutoff_count {
+            let msg = format!(
+                "Sample config had {} cutoffs, draw config had {} colors",
+                cutoff_count, colors_count
+            );
+            return Err(EscapeError::IncompatibleDrawConfig(msg));
+        }
+
+        if powers_count != cutoff_count {
+            let msg = format!(
+                "Sample config had {} cutoffs, draw config had {} powers",
+                cutoff_count, powers_count
+            );
+            return Err(EscapeError::IncompatibleDrawConfig(msg));
+        }
+
+        Ok(())
     }
 }
