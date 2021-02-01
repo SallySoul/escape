@@ -23,7 +23,7 @@ pub struct SampleOptions {
     #[structopt(short, long, default_value = "1")]
     pub workers: usize,
 
-    /// Set a timeout for running workers
+    /// Set a timeout for running workers (seconds)
     #[structopt(short, long)]
     pub duration: Option<u64>,
 
