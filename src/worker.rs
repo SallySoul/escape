@@ -217,6 +217,11 @@ impl WorkerState {
         let mut closest_sample = Complex::new(0.0, 0.0);
 
         for _ in 0..200 {
+            if self.stop() {
+                info!("In warmup stop");
+                return (None, depth);
+            }
+
             // Generate sample for this iteration
             let sample = seed_r + radius_sample(radius);
 
@@ -301,11 +306,9 @@ impl WorkerState {
 
         //println!("*** Starting WarmUp");
         for s in 0..self.sample_config.warm_up_samples {
-            if s % 1000 == 0 {
-                if self.stop() {
-                    info!("In warmup stop");
-                    break;
-                }
+            if self.stop() {
+               info!("In warmup stop");
+               break;
             }
 
             let mutation = self.mutate(&z);
