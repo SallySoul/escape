@@ -4,7 +4,8 @@ use serde::{Deserialize, Serialize};
 /// DrawConfig is used to color histogram results
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct DrawConfig {
-    pub colors: Vec<[f64; 3]>,
+    pub colors: Vec<[u8; 3]>,
+    pub powers: Vec<f64>,
     pub background_color: [f64; 3],
 }
 
