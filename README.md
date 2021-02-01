@@ -1,4 +1,5 @@
 # escape
+[![CI](https://github.com/sallysoul/escape/workflows/CI/badge.svg)](https://github.com/sallysoul/escape/actions)
 
 Escape is a configurable renderer for the [buddhabrot](https://en.wikipedia.org/wiki/Buddhabrot).
 
