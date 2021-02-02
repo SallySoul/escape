@@ -127,6 +127,8 @@ impl WorkerState {
         project_onto_view(&self.sample_config.view, c)
     }
 
+    /// Typical mandelbrot code, though we do fill the orbit buffer with the iterations
+    /// Returns true if the sample escaped
     fn evaluate(&mut self, c: &Complex) -> bool {
         self.orbit_buffer.clear();
         let mut z = *c;

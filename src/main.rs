@@ -1,6 +1,3 @@
-#![feature(get_mut_unchecked)]
-#![feature(thread_id_value)]
-
 /// Structs for the CLI interface
 mod cli_options;
 
@@ -16,8 +13,8 @@ mod histogram_result;
 /// Common types found in the application, including the error type
 mod types;
 
-/// Buddhabrot sampling implementation
-mod worker;
+/// Buddhabrot sampling implementation, and merging operation
+mod sample;
 
 /// Implementation to draw buddhabrot histogram result
 mod draw;
@@ -34,13 +31,13 @@ fn main() -> EscapeResult {
 
     match &cli_options {
         CliOptions::Sample(sample_options) => {
-            worker::run_sampling(&sample_options)?;
+            sample::run_sampling(&sample_options)?;
         }
         CliOptions::Draw(draw_options) => {
             draw::run_draw(&draw_options)?;
         }
         CliOptions::Merge(merge_options) => {
-            worker::run_merge(&merge_options)?;
+            sample::run_merge(&merge_options)?;
         }
         CliOptions::Stl(stl_options) => {
             stl::run_stl(&stl_options)?;

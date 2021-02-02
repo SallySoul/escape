@@ -84,13 +84,14 @@ STL relief maps can be generated in a way similiar to the draw command.
 
 ## Building from source 
 
-`escape` is built using the rust nightly toolchain.
-If you do not have that installed, the go-to way of aquiring it is [rustup](https://rustup.rs).
+`escape` must be built rust 1.50.0 or greater, since it makes use of the `clamp` feature.
+That's still a beta release as of writing.
+If you do not have rust installed, the go-to way of aquiring it is [rustup](https://rustup.rs).
 
 
 ```
-# Currently using nightly, 1.51
-rustup default nightly
+# Currently using 1.50.0, which is beta
+rustup default beta
 
 # clone and build
 git clone https://github.com/SallySoul/escape.git
@@ -117,7 +118,7 @@ cargo install --path .
 ### [The Buddhabrot](http://www.steckles.com/buddha/) by Alexander Boswell
 
 
-Alexander Boswell's work as described here is novel and often referenced in other writing about the buddhabrot set.
+Alexander Boswell's work as described here is novel and often referenced in other writing about the buddhabrot.
 The key takeaway is to make use of the Metropolis-Hastings algorithm to enable expedient rendering of zoomed regions.
 In addition, the source Alexander released was critical for the development of this project.
 Notable places I drew from this work include:
