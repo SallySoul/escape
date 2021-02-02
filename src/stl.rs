@@ -69,6 +69,7 @@ fn generate_height_mesh(
     let height = sample_config.view.height;
     let width_step = stl_config.width / width as f32;
     let height_step = stl_config.height / height as f32;
+    let relief = stl_config.relief_height;
     let min_depth = stl_config.min_depth;
     let max_depth = stl_config.min_depth + stl_config.relief_height;
 
@@ -81,7 +82,7 @@ fn generate_height_mesh(
             for (cutoff_index, contribution) in stl_config.contributions.iter().enumerate() {
                 let power = stl_config.powers[cutoff_index];
                 let value = grids[cutoff_index].value(x, y).powf(power);
-                vertex[2] += contribution * (value as f32);
+                vertex[2] += contribution * (value as f32) * relief;
             }
             vertex[2] = vertex[2].clamp(min_depth, max_depth);
             height_vertices.set_value(vertex, x, y);
