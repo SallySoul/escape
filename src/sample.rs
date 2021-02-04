@@ -29,7 +29,7 @@ fn random_prob() -> f64 {
 }
 
 /// Find the grid coords for a given complex number and view config
-pub fn project_onto_view(view: &ViewConfig, c: &Complex) -> Option<(usize, usize)> {
+fn project_onto_view(view: &ViewConfig, c: &Complex) -> Option<(usize, usize)> {
     let x_fp = ((c.re - view.center.re) * view.zoom) + 0.5;
     let y_fp = ((c.im - view.center.im) * view.zoom) + 0.5;
 
@@ -49,13 +49,13 @@ pub fn project_onto_view(view: &ViewConfig, c: &Complex) -> Option<(usize, usize
 
 /// Utility used to synchronize workers
 #[derive(Debug)]
-pub struct StopSwitch {
+struct StopSwitch {
     stop: bool,
 }
-pub type ARStopSwitch = Arc<RwLock<StopSwitch>>;
+type ARStopSwitch = Arc<RwLock<StopSwitch>>;
 
 impl StopSwitch {
-    pub async fn new(maybe_duration: &Option<u64>) -> ARStopSwitch {
+    async fn new(maybe_duration: &Option<u64>) -> ARStopSwitch {
         let result = Arc::new(RwLock::new(StopSwitch { stop: false }));
 
         tokio::spawn(ctrl_c_handler(result.clone()));
@@ -67,7 +67,7 @@ impl StopSwitch {
         result
     }
 
-    pub fn stop(&self) -> bool {
+    fn stop(&self) -> bool {
         self.stop
     }
 }
@@ -98,9 +98,9 @@ async fn duration_handler(switch: ARStopSwitch, seconds: u64) -> EscapeResult {
 }
 
 #[derive(Debug)]
-pub struct WorkerState {
+struct WorkerState {
     sample_config: SampleConfig,
-    pub grids: Vec<CountGrid>,
+    grids: Vec<CountGrid>,
     norm_cutoff_sqr: f64,
     iteration_cutoff: usize,
     iteration_cutoff_f64: f64,
@@ -109,7 +109,7 @@ pub struct WorkerState {
 }
 
 impl WorkerState {
-    pub fn new(sample_config: &SampleConfig, stop_switch: ARStopSwitch) -> WorkerState {
+    fn new(sample_config: &SampleConfig, stop_switch: ARStopSwitch) -> WorkerState {
         let cutoff = *sample_config.cutoffs.last().unwrap();
         let view = sample_config.view;
         WorkerState {
@@ -123,7 +123,7 @@ impl WorkerState {
         }
     }
 
-    pub fn project(&self, c: &Complex) -> Option<(usize, usize)> {
+    fn project(&self, c: &Complex) -> Option<(usize, usize)> {
         project_onto_view(&self.sample_config.view, c)
     }
 
@@ -425,7 +425,7 @@ impl WorkerState {
     }
 
     #[tracing::instrument(skip(self))]
-    pub fn run_worker(mut self) -> Self {
+    fn run_worker(mut self) -> Self {
         let mut metro_instances = 0;
         while !self.stop() {
             metro_instances += 1;
@@ -438,7 +438,7 @@ impl WorkerState {
 }
 
 #[tracing::instrument(skip(config, grids))]
-fn merge_grids(config: &SampleConfig, grids: Vec<CountGrid>) -> CountGrid {
+fn merge_grids(config: &SampleConfig, grids: Vec<&CountGrid>) -> CountGrid {
     let mut result = CountGrid::zero(config.view.width, config.view.height);
     for x in 0..config.view.width {
         for y in 0..config.view.height {
@@ -453,20 +453,24 @@ fn merge_grids(config: &SampleConfig, grids: Vec<CountGrid>) -> CountGrid {
     result
 }
 
-#[tracing::instrument(skip(config, results))]
-async fn merge_results(
+//#[tracing::instrument(skip(config, results))]
+async fn merge_results<E: 'static + Send + Sync, F: 'static + Fn(&E, usize) -> &CountGrid + Send + Sync + Copy> (
     config: Arc<SampleConfig>,
-    results: &[Vec<CountGrid>],
+    results: Arc<Vec<E>>,
+    extract: F
 ) -> Result<Vec<CountGrid>, EscapeError> {
     let cutoff_count = config.cutoffs.len();
     let mut tasks = Vec::with_capacity(cutoff_count);
     for cutoff_index in 0..cutoff_count {
-        let mut count_grids = Vec::with_capacity(results.len());
-        for result in results {
-            count_grids.push(result[cutoff_index].clone());
-        }
         let c = config.clone();
-        tasks.push(tokio::spawn(async move { merge_grids(&c, count_grids) }));
+        let task_results = results.clone();
+        tasks.push(tokio::spawn(async move {
+            let mut count_grids = Vec::with_capacity(task_results.len());
+            for result in &*task_results {
+                count_grids.push(extract(result, cutoff_index));
+            }
+            merge_grids(&c, count_grids) })
+        );
     }
 
     let mut result = Vec::with_capacity(cutoff_count);
@@ -510,9 +514,10 @@ async fn async_sampling(cli_options: &SampleOptions) -> EscapeResult {
     for w in futures {
         results.push(w.await?.grids);
     }
+    let arc_results = Arc::new(results);
     info!("Sampling workers have completed");
 
-    let merged_grids = merge_results(config.clone(), &results).await?;
+    let merged_grids = merge_results(config.clone(), arc_results, |x, i| &x[i]).await?;
     info!("Worker results have been merged");
 
     HistogramResult::save(&config, &merged_grids, &cli_options.output)?;
@@ -570,6 +575,7 @@ async fn async_merge(cli_options: &MergeOptions) -> EscapeResult {
         configs.push(histogram.0);
         results.push(histogram.1)
     }
+    let arc_results = Arc::new(results);
     info!("Files loaded");
 
     // Check compatability
@@ -582,7 +588,7 @@ async fn async_merge(cli_options: &MergeOptions) -> EscapeResult {
     }
     info!("Configs are compatible");
 
-    let result = merge_results(configs[0].clone(), &results).await?;
+    let result = merge_results(configs[0].clone(), arc_results, |x, i| &x[i]).await?;
     info!("Results have been merged");
 
     HistogramResult::save(&configs[0], &result, &cli_options.output)?;

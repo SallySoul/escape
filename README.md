@@ -45,7 +45,7 @@ $ escape sample \
 Sampling is highly configurable, using a `SampleConfig` saved as a json file.
 Examples of these files can be found in [`configs/sample_configs`](configs/sample_configs).
 
-Note that the metropolis hastings based sampling produces "splotchy" noise, particularly for deep zooms and high iteration cutoffs. Consider the three following frames that are differentiated only by adding additional sampling time.
+Note that the sampling method used by escape produces "splotchy" noise, particularly for deep zooms and high iteration cutoffs. Consider the three following frames that are differentiated only by adding additional sampling time.
 
 ![Splotchy](splotchy.gif?raw=true "Splotchy")
 
