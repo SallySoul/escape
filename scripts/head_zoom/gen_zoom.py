@@ -112,7 +112,7 @@ if run_commands:
 # We may want to rotate the gif
 rotate_command = "convert" \
     + " " + gif_intermediate \
-    + " -distort SRT " + rotate_gif_degrees \
+    + " -distort SRT " + str(rotate_gif_degrees) \
     + " " + gif_output
 
 if print_commands:
