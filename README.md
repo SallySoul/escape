@@ -8,6 +8,8 @@ Escape contains configurable tools for sampling and rendering the [buddhabrot](h
 
 Escape is still under construction, and is not feature complete or stable.
 
+The repo also includes some additional [scripts](scripts) for creating animations, etc.
+
 ## Usage
 
 ```
