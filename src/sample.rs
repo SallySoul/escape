@@ -454,10 +454,13 @@ fn merge_grids(config: &SampleConfig, grids: Vec<&CountGrid>) -> CountGrid {
 }
 
 //#[tracing::instrument(skip(config, results))]
-async fn merge_results<E: 'static + Send + Sync, F: 'static + Fn(&E, usize) -> &CountGrid + Send + Sync + Copy> (
+async fn merge_results<
+    E: 'static + Send + Sync,
+    F: 'static + Fn(&E, usize) -> &CountGrid + Send + Sync + Copy,
+>(
     config: Arc<SampleConfig>,
     results: Arc<Vec<E>>,
-    extract: F
+    extract: F,
 ) -> Result<Vec<CountGrid>, EscapeError> {
     let cutoff_count = config.cutoffs.len();
     let mut tasks = Vec::with_capacity(cutoff_count);
@@ -469,8 +472,8 @@ async fn merge_results<E: 'static + Send + Sync, F: 'static + Fn(&E, usize) -> &
             for result in &*task_results {
                 count_grids.push(extract(result, cutoff_index));
             }
-            merge_grids(&c, count_grids) })
-        );
+            merge_grids(&c, count_grids)
+        }));
     }
 
     let mut result = Vec::with_capacity(cutoff_count);
