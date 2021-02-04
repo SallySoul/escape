@@ -6,4 +6,4 @@ To run the stuff in here you should need both python(3) and imagemagick (the `co
 
 ## Head Zoom
 
-![HeadZoom](https://gfycat.com/rectangularbitterherculesbeetle-buddhabrot-generative-fractal-rust?raw=true "HeadZoom")
+[HeadZoom](https://gfycat.com/rectangularbitterherculesbeetle-buddhabrot-generative-fractal-rust)
