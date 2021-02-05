@@ -31,11 +31,28 @@ output_dir = os.getcwd()
 sample_config_file = open(sample_config_path)
 sample_config = json.load(sample_config_file)
 
-# Zooming is a multiplier per frame,
-# Constant multiplier would be constant zoom
-# We want an eased transition, so we increment an angle by a constant each frame
-# and use the exponential of a cosine of that angle to figure out the zoom
-# So we start by finding the log of the min and max zooms, and go from there
+# Zooming and How it Works:
+#
+# To achieve a visually even zoom transition
+# one could apply a consistent multiplier each frame.
+# But, how can we decide that we want to evenly split a zoom from a to b over n frames?
+#
+# We use a compact (takes [0, 1] parameter) and continuous function that describes the
+# zoom transition for from the start to the end.
+#
+# We calculate the parameter for a given frame index with p_f as the fraction the total
+# frame count.
+# p_f(f) = (frame_count - f) / frame_count
+#
+# A zoom with a constant speed would make a linear relationship between the parameter and
+# the logarithm of the zoom.
+# log(p) = exp(p * (log(b) - log(a)) + log(a) where zoom : [0, 1] -> [a, b].
+#
+# However we want an eased transition that has smooth acceleration too!
+# So we add the additional fuction that uses a cosine to smoothly acclerate the zoom.
+# eased(p) = cos(p * PI) * 0.5 + 0.5
+#
+# Putting it together we use zoom(frame_index) = log(eased(p_f(frame_index)))
 min_log = math.log(start_zoom)
 max_log = math.log(zoom_end)
 log_diff = max_log - min_log

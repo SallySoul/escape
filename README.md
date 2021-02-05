@@ -143,6 +143,7 @@ In addition, he talks about various approaches to smoothing the result, which I 
 ### [The Buddhabrot Technique](http://superliminal.com/fractals/bbrot/bbrot.html) by Melinda Green
 
 This is a comprehensive resource, including history of the technique and compiliation of other implementations.
+Melinda Green first shared the technique 
 
 ### [budhabrot - 2002](https://iquilezles.org/www/articles/budhabrot/budhabrot.html) by Inigo Quilez
 
