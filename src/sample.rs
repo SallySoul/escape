@@ -129,9 +129,12 @@ impl WorkerState {
 
     /// Typical mandelbrot code, though we do fill the orbit buffer with the iterations
     /// Returns true if the sample escaped
-    fn evaluate(&mut self, c: &Complex) -> bool {
+    fn evaluate(&mut self, sample: &Complex) -> bool {
         self.orbit_buffer.clear();
-        let mut z = *c;
+        let jc = self.sample_config.julia_set_param;
+        let m = self.sample_config.mandlebrot_param;
+        let c = jc + m * sample;
+        let mut z = sample.clone();
         let mut iteration = 0;
         while z.norm_sqr() <= self.norm_cutoff_sqr && iteration <= self.iteration_cutoff {
             self.orbit_buffer.push(z);
