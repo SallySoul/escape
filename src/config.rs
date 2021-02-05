@@ -20,6 +20,21 @@ pub struct SampleConfig {
     /// The region of the buddhabrot to render
     pub view: ViewConfig,
 
+    /// Julia set parameter.
+    /// Default value is 0+0i
+    /// Combined with default mandlebrot param, this produces
+    /// producing traditional mandlebrot itreration.
+    /// coord = complex coord
+    /// jc = julia set param
+    /// m = mandlebrot param
+    /// f(z) = z^2 + (jc + m * coord)
+    #[serde(default = "SampleConfig::default_initial_c")]
+    pub julia_set_param: Complex,
+
+    /// A scaling param to transform from julia to mandlebrot iterations
+    /// Default value is 1.0
+    pub mandlebrot_param: f64,
+
     /// Depth Limit for the initial samples search
     /// Default value is 500
     #[serde(default = "SampleConfig::default_initial_search_depth")]
@@ -75,6 +90,10 @@ impl SampleConfig {
 
     fn default_outside_limit() -> usize {
         100
+    }
+
+    fn default_initial_c() -> Complex {
+        Complex::new(0.0, 0.0)
     }
 
     pub fn compatible(&self, other: &Self) -> bool {
