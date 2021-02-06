@@ -28,11 +28,12 @@ pub struct SampleConfig {
     /// jc = julia set param
     /// m = mandlebrot param
     /// f(z) = z^2 + (jc + m * coord)
-    #[serde(default = "SampleConfig::default_initial_c")]
+    #[serde(default = "SampleConfig::default_julia_set_param")]
     pub julia_set_param: Complex,
 
     /// A scaling param to transform from julia to mandlebrot iterations
     /// Default value is 1.0
+    #[serde(default = "SampleConfig::default_mandlebrot_param")]
     pub mandlebrot_param: f64,
 
     /// Depth Limit for the initial samples search
@@ -92,8 +93,12 @@ impl SampleConfig {
         100
     }
 
-    fn default_initial_c() -> Complex {
+    fn default_julia_set_param() -> Complex {
         Complex::new(0.0, 0.0)
+    }
+
+    fn default_mandlebrot_param() -> f64 {
+        1.0
     }
 
     pub fn compatible(&self, other: &Self) -> bool {
