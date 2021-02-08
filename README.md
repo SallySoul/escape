@@ -111,8 +111,6 @@ cargo install --path .
   - Enables effective sampling for deep zooms.
   - Configurable to avoid sampling bias / noise.
   - Based on Alexander Boswell's work.
-* Conjugate orbits used to inform sampling.
-  - Minor optimzation, evaluating orbits for high iteration cutoffs is expensive.
 * Multi-threaded sampling with tokio.
   - No known limits to scaling, can take advantage of high core-count processors.
 * Double precision floating points used (shrug)

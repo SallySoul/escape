@@ -134,9 +134,9 @@ impl WorkerState {
         let jc = self.sample_config.julia_set_param;
         let m = self.sample_config.mandlebrot_param;
         let c = jc + m * sample;
-        let mut z = sample.clone();
+        let mut z = *sample;
         let mut iteration = 0;
-        while z.norm_sqr() <= self.norm_cutoff_sqr && iteration <= self.iteration_cutoff {
+        while z.norm_sqr() <= self.norm_cutoff_sqr && iteration < self.iteration_cutoff {
             self.orbit_buffer.push(z);
             z = z * z + c;
             iteration += 1;
@@ -149,8 +149,7 @@ impl WorkerState {
     /// The contribution of a proposed value c
     /// is the fraction of the orbit that intersects the view
     fn contribution(&self, intersection_count: usize) -> f64 {
-        // Note that we have to account for symetry though!
-        intersection_count as f64 / (2.0 * self.iteration_cutoff as f64)
+        intersection_count as f64 / self.iteration_cutoff as f64
     }
 
     /// Find the number of times the orbit buffer intersects the view
@@ -163,28 +162,19 @@ impl WorkerState {
             if self.project(&c).is_some() {
                 result += 1;
             }
-            if self.project(&c.conj()).is_some() {
-                result += 1;
-            }
         }
         result
     }
 
     /// Record the contents of the orbit buffer to the count grids
-    /// Return the number of intersections (does include symetry)
+    /// Return the number of intersections
     #[tracing::instrument(skip(self))]
     fn record_orbit(&mut self) -> usize {
         let mut result = 0;
         for (i, cutoff) in self.sample_config.cutoffs.iter().enumerate() {
             if self.orbit_buffer.len() <= *cutoff {
                 for c in &self.orbit_buffer {
-                    // Account for symetry by adding the point and its conjugate
                     if let Some((x, y)) = self.project(&c) {
-                        self.grids[i].increment(x, y);
-                        result += 1;
-                    }
-
-                    if let Some((x, y)) = self.project(&c.conj()) {
                         self.grids[i].increment(x, y);
                         result += 1;
                     }
@@ -192,9 +182,7 @@ impl WorkerState {
                 return result;
             }
         }
-        // TODO: maybe we should just crash here instead?
-        // Shouldn't ever happen
-        0
+        panic!("Did not record orbit to cutoff, ob len() {}, cutoff {}", self.orbit_buffer.len(), self.sample_config.cutoffs.last().unwrap());
     }
 
     /// Find a point whose orbit passes through the view

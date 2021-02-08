@@ -1,6 +1,6 @@
 {
   "cutoffs": [
-    500000
+    50
   ],
   "view": {
     "width": 800,
@@ -11,6 +11,6 @@
       0.0
     ]
   },
-  "samples": 200000,
-  "warm_up_samples": 2000
+  "samples": 20000,
+  "warm_up_samples": 1
 }
