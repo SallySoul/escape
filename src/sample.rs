@@ -4,7 +4,7 @@ use std::io::BufReader;
 use std::sync::Arc;
 use tracing::{error, info, trace, warn};
 
-use crate::cli_options::{MergeOptions, SampleOptions};
+use crate::cli_options::{MergeOptions, ReportOptions, SampleOptions};
 use crate::config::{SampleConfig, ViewConfig};
 use crate::histogram_result::HistogramResult;
 use crate::types::{Complex, CountGrid, EscapeError, EscapeResult};
@@ -30,11 +30,12 @@ fn random_prob() -> f64 {
 
 /// Find the grid coords for a given complex number and view config
 fn project_onto_view(view: &ViewConfig, c: &Complex) -> Option<(usize, usize)> {
-    let x_fp = ((c.re - view.center.re) * view.zoom) + 0.5;
-    let y_fp = ((c.im - view.center.im) * view.zoom) + 0.5;
-
-    let x_signed = (x_fp * view.width as f64) as i32;
-    let y_signed = (y_fp * view.height as f64) as i32;
+    let v_w = view.width as f64;
+    let v_h = view.height as f64;
+    let x_fp = ((c.re - view.center.re) * view.zoom) * v_h + v_w / 2.0;
+    let y_fp = ((c.im - view.center.im) * view.zoom) * v_h + v_h / 2.0;
+    let x_signed = x_fp as i32;
+    let y_signed = y_fp as i32;
 
     if x_signed >= 0
         && y_signed >= 0
@@ -132,7 +133,7 @@ impl WorkerState {
     fn evaluate(&mut self, sample: &Complex) -> bool {
         self.orbit_buffer.clear();
         let jc = self.sample_config.julia_set_param;
-        let m = self.sample_config.mandlebrot_param;
+        let m = self.sample_config.mandelbrot_param;
         let c = jc + m * sample;
         let mut z = *sample;
         let mut iteration = 0;
@@ -182,7 +183,11 @@ impl WorkerState {
                 return result;
             }
         }
-        panic!("Did not record orbit to cutoff, ob len() {}, cutoff {}", self.orbit_buffer.len(), self.sample_config.cutoffs.last().unwrap());
+        panic!(
+            "Did not record orbit to cutoff, ob len() {}, cutoff {}",
+            self.orbit_buffer.len(),
+            self.sample_config.cutoffs.last().unwrap()
+        );
     }
 
     /// Find a point whose orbit passes through the view
@@ -600,6 +605,26 @@ pub fn run_merge(merge_options: &MergeOptions) -> EscapeResult {
 
     rt.block_on(async_merge(&merge_options))?;
 
+    Ok(())
+}
+
+pub fn run_report(report_options: &ReportOptions) -> EscapeResult {
+    let (_, histogram) = HistogramResult::from_file(&report_options.histogram)?;
+    for (i, grid) in histogram.iter().enumerate() {
+        let data: Vec<f64> = grid.data().iter().map(|c| *c as f64).collect();
+        println!("Grid {}:", i);
+        let min = grid.data().iter().min().unwrap();
+        println!("  min: {}", min);
+        let max = grid.data().iter().max().unwrap();
+        println!("  max: {}", max);
+        let mean = statistical::mean(&data);
+        println!("  mean: {}", mean);
+        //let median = statistical::median(&data);
+        //println!("  median: {}", median);
+        let sd = statistical::standard_deviation(&data, None);
+        println!("  stdev: {}", sd);
+        println!();
+    }
     Ok(())
 }
 

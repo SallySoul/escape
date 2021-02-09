@@ -38,6 +38,10 @@ impl<N: Copy + Clone> Grid<N> {
     pub fn value(&self, x: usize, y: usize) -> N {
         self.boxes[y * self.width + x]
     }
+
+    pub fn data(&self) -> &[N] {
+        &self.boxes
+    }
 }
 
 impl Grid<u64> {

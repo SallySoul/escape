@@ -42,6 +42,9 @@ fn main() -> EscapeResult {
         CliOptions::Stl(stl_options) => {
             stl::run_stl(&stl_options)?;
         }
+        CliOptions::Report(report_options) => {
+            sample::run_report(&report_options)?;
+        }
     }
     Ok(())
 }
