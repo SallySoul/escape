@@ -22,19 +22,19 @@ pub struct SampleConfig {
 
     /// Julia set parameter.
     /// Default value is 0+0i
-    /// Combined with default mandlebrot param, this produces
-    /// producing traditional mandlebrot itreration.
+    /// Combined with default mandelbrot param, this produces
+    /// producing traditional mandelbrot itreration.
     /// coord = complex coord
     /// jc = julia set param
-    /// m = mandlebrot param
+    /// m = mandelbrot param
     /// f(z) = z^2 + (jc + m * coord)
     #[serde(default = "SampleConfig::default_julia_set_param")]
     pub julia_set_param: Complex,
 
-    /// A scaling param to transform from julia to mandlebrot iterations
-    /// Default value is 1.0
-    #[serde(default = "SampleConfig::default_mandlebrot_param")]
-    pub mandlebrot_param: f64,
+    /// A scaling param to transform from julia to mandelbrot iterations
+    /// Default value is 1.0+0i
+    #[serde(default = "SampleConfig::default_mandelbrot_param")]
+    pub mandelbrot_param: Complex,
 
     /// Depth Limit for the initial samples search
     /// Default value is 500
@@ -97,8 +97,8 @@ impl SampleConfig {
         Complex::new(0.0, 0.0)
     }
 
-    fn default_mandlebrot_param() -> f64 {
-        1.0
+    fn default_mandelbrot_param() -> Complex {
+        Complex::new(1.0, 0.0)
     }
 
     pub fn compatible(&self, other: &Self) -> bool {

@@ -10,6 +10,7 @@ pub enum CliOptions {
     Draw(DrawOptions),
     Merge(MergeOptions),
     Stl(StlOptions),
+    Report(ReportOptions),
 }
 
 /// Sample the buddhabrot and create a histogram result
@@ -103,6 +104,22 @@ pub struct StlOptions {
     /// TODO: Find what acceptable image types are
     #[structopt(short, long, parse(from_os_str))]
     pub output: PathBuf,
+
+    /// Logging verbosity
+    #[structopt(short, long, default_value = "info")]
+    pub verbosity: Verbosity,
+
+    /// Use pretty logging
+    #[structopt(short, long)]
+    pub pretty_logging: bool,
+}
+
+/// Print a report on a histogram file
+#[derive(StructOpt, Debug)]
+pub struct ReportOptions {
+    /// Path to sampling result
+    #[structopt(short, long, parse(from_os_str))]
+    pub histogram: PathBuf,
 
     /// Logging verbosity
     #[structopt(short, long, default_value = "info")]
