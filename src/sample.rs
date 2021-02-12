@@ -144,7 +144,7 @@ impl WorkerState {
         }
 
         // Did point escape?
-        z.norm_sqr() > self.norm_cutoff_sqr || iteration != self.iteration_cutoff
+        z.norm_sqr() > self.norm_cutoff_sqr
     }
 
     /// The contribution of a proposed value c
@@ -313,7 +313,23 @@ impl WorkerState {
             }
 
             let mutation = self.mutate(&z);
-            self.evaluate(&mutation);
+
+            // Only orbits that escape should not be counted
+            if !self.evaluate(&mutation) {
+                outside_samples += 1;
+                outside_streak += 1;
+                if outside_streak > self.sample_config.outside_limit {
+                    warn!(
+                        warm_up_sample,
+                        accepted_samples,
+                        rejected_samples,
+                        outside_samples,
+                        "Outside streak exceeded in warm up, evaluate"
+                    );
+                    return;
+                }
+            }
+
             let mutation_orbit_len = self.orbit_buffer.len();
             let intersection_count = self.orbit_intersections();
             // If the mutation doesn't intersect at all, it's a dud
@@ -369,7 +385,22 @@ impl WorkerState {
             }
 
             let mutation = self.mutate(&z);
-            self.evaluate(&mutation);
+            if !self.evaluate(&mutation) {
+                outside_samples += 1;
+                outside_streak += 1;
+                if outside_streak > self.sample_config.outside_limit {
+                    warn!(
+                        sample,
+                        accepted_samples,
+                        rejected_samples,
+                        outside_samples,
+                        "Outside streak exceeded, evaluate"
+                    );
+                    return;
+                }
+                continue;
+            }
+
             let mutation_orbit_len = self.orbit_buffer.len();
             let intersection_count = self.record_orbit();
 
