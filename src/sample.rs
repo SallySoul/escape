@@ -701,19 +701,19 @@ mod tests {
         );
         assert_eq!(
             project_onto_view(&config, &Complex::new(-0.5, -0.5)),
-            Some((0, 0))
+            Some((50, 0))
         );
         assert_eq!(
             project_onto_view(&config, &Complex::new(-0.5, 0.5 - pixel_eps)),
-            Some((0, 399))
+            Some((50, 399))
         );
         assert_eq!(
             project_onto_view(&config, &Complex::new(0.5 - pixel_eps, -0.5)),
-            Some((499, 0))
+            Some((449, 0))
         );
         assert_eq!(
             project_onto_view(&config, &Complex::new(0.5 - pixel_eps, 0.5 - pixel_eps)),
-            Some((499, 399))
+            Some((449, 399))
         );
 
         assert_eq!(project_onto_view(&config, &Complex::new(100.0, 0.5)), None);
@@ -741,19 +741,19 @@ mod tests {
         );
         assert_eq!(
             project_onto_view(&config, &Complex::new(-1.25, 1.75)),
-            Some((0, 0))
+            Some((50, 0))
         );
         assert_eq!(
             project_onto_view(&config, &Complex::new(-1.25, 2.25 - pixel_eps)),
-            Some((0, 399))
+            Some((50, 399))
         );
         assert_eq!(
             project_onto_view(&config, &Complex::new(-0.75 - pixel_eps, 1.75)),
-            Some((499, 0))
+            Some((449, 0))
         );
         assert_eq!(
             project_onto_view(&config, &Complex::new(-0.75 - pixel_eps, 2.25 - pixel_eps)),
-            Some((499, 399))
+            Some((449, 399))
         );
 
         assert_eq!(project_onto_view(&config, &Complex::new(100.0, 0.5)), None);

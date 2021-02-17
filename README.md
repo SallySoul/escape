@@ -20,7 +20,7 @@ $ escape --help
 There are 2 - 3 steps to getting renders out of escape.
 First, a histogram file must be created using the `sample` command, in conjunction with a `SampleConfig` file.
 Multiple histogram files can be merged with the `merge` command.
-A histogram file can than be rendered using either the `draw` or `stl` commands using their respective config files.
+A histogram file can than be rendered using the `draw`  commands and a draw config file.
 
 ### Sampling
 
@@ -79,14 +79,6 @@ $ escape draw --help
 
 Drawing is highly configurable, using a `DrawConfig` saved as a json file.
 Examples of these files can be found in [`configs/draw_configs`](configs/draw_configs).
-
-### Export as STL
-
-```
-$ escape stl --help
-```
-
-STL relief maps can be generated in a way similiar to the draw command.
 
 ## Building from source 
 
