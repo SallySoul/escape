@@ -19,9 +19,6 @@ mod sample;
 /// Implementation to draw buddhabrot histogram result
 mod draw;
 
-/// Implementation to create STL height maps from histogram result
-mod stl;
-
 use crate::cli_options::CliOptions;
 use crate::types::EscapeResult;
 use structopt::StructOpt;
@@ -38,9 +35,6 @@ fn main() -> EscapeResult {
         }
         CliOptions::Merge(merge_options) => {
             sample::run_merge(&merge_options)?;
-        }
-        CliOptions::Stl(stl_options) => {
-            stl::run_stl(&stl_options)?;
         }
         CliOptions::Report(report_options) => {
             sample::run_report(&report_options)?;

@@ -23,6 +23,7 @@ impl<N: num_traits::Num + Copy + Clone> Grid<N> {
 }
 
 impl<N: Copy + Clone> Grid<N> {
+    /*
     pub fn from(width: usize, height: usize, value: N) -> Grid<N> {
         Grid {
             boxes: vec![value; width * height],
@@ -30,6 +31,7 @@ impl<N: Copy + Clone> Grid<N> {
             height,
         }
     }
+    */
 
     pub fn set_value(&mut self, value: N, x: usize, y: usize) {
         self.boxes[y * self.width + x] = value;

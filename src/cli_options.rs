@@ -9,7 +9,6 @@ pub enum CliOptions {
     Sample(SampleOptions),
     Draw(DrawOptions),
     Merge(MergeOptions),
-    Stl(StlOptions),
     Report(ReportOptions),
 }
 
@@ -81,31 +80,6 @@ pub struct MergeOptions {
     pub workers: usize,
 
     /// Path to store partial image
-    #[structopt(short, long, default_value = "info")]
-    pub verbosity: Verbosity,
-
-    /// Use pretty logging
-    #[structopt(short, long)]
-    pub pretty_logging: bool,
-}
-
-/// Create an STL heightmap from a histogram result
-#[derive(StructOpt, Debug)]
-pub struct StlOptions {
-    /// Path to the stl config file
-    #[structopt(short, long, parse(from_os_str))]
-    pub config: PathBuf,
-
-    /// Path to sampling result
-    #[structopt(short, long, parse(from_os_str))]
-    pub histogram: PathBuf,
-
-    /// Path to store image output
-    /// TODO: Find what acceptable image types are
-    #[structopt(short, long, parse(from_os_str))]
-    pub output: PathBuf,
-
-    /// Logging verbosity
     #[structopt(short, long, default_value = "info")]
     pub verbosity: Verbosity,
 
