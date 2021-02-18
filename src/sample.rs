@@ -53,10 +53,10 @@ fn project_onto_view(view: &ViewConfig, c: &Complex) -> Option<(usize, usize)> {
 struct StopSwitch {
     stop: bool,
 }
-type ARStopSwitch = Arc<RwLock<StopSwitch>>;
+type ArcSwitch = Arc<RwLock<StopSwitch>>;
 
 impl StopSwitch {
-    async fn new(maybe_duration: &Option<u64>) -> ARStopSwitch {
+    async fn new(maybe_duration: &Option<u64>) -> ArcSwitch {
         let result = Arc::new(RwLock::new(StopSwitch { stop: false }));
 
         tokio::spawn(ctrl_c_handler(result.clone()));
@@ -73,7 +73,7 @@ impl StopSwitch {
     }
 }
 
-async fn ctrl_c_handler(switch: ARStopSwitch) -> EscapeResult {
+async fn ctrl_c_handler(switch: ArcSwitch) -> EscapeResult {
     loop {
         tokio::signal::ctrl_c().await?;
         let mut s = switch.write();
@@ -86,7 +86,7 @@ async fn ctrl_c_handler(switch: ARStopSwitch) -> EscapeResult {
     }
 }
 
-async fn duration_handler(switch: ARStopSwitch, seconds: u64) -> EscapeResult {
+async fn duration_handler(switch: ArcSwitch, seconds: u64) -> EscapeResult {
     tokio::time::sleep(std::time::Duration::from_secs(seconds)).await;
     let mut s = switch.write();
     if s.stop {
@@ -106,11 +106,11 @@ struct WorkerState {
     iteration_cutoff: usize,
     iteration_cutoff_f64: f64,
     orbit_buffer: Vec<Complex>,
-    stop_switch: ARStopSwitch,
+    stop_switch: ArcSwitch,
 }
 
 impl WorkerState {
-    fn new(sample_config: &SampleConfig, stop_switch: ARStopSwitch) -> WorkerState {
+    fn new(sample_config: &SampleConfig, stop_switch: ArcSwitch) -> WorkerState {
         let cutoff = *sample_config.cutoffs.last().unwrap();
         let view = sample_config.view;
         WorkerState {
