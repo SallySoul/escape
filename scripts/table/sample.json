@@ -1,0 +1,1 @@
+{"cutoffs": [20, 50, 90, 150, 250], "julia_set_param": [0.0, 0.0], "samples": 10000, "warm_up_samples": 10, "view": {"zoom": 0.34, "center": [0, 0], "width": 2200, "height": 2200}, "mandelbrot_param": [0.9510565162951535, -0.3090169943749476]}

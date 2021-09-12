@@ -1,3 +1,9 @@
 /target
 /output
 /results
+*.vtu
+*.vtk
+*.gif
+*.mp4
+*.png
+*.html

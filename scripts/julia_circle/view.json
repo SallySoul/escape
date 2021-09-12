@@ -1,0 +1,18 @@
+{
+  "cutoffs": [
+    40,
+    80,
+    130
+  ],
+  "view": {
+    "width": 400,
+    "height": 400,
+    "zoom": 2,
+    "center": [
+      -1.1550,
+      0.0
+    ]
+  },
+  "samples": 1000,
+  "warm_up_samples": 100
+}

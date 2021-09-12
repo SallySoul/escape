@@ -22,7 +22,7 @@ fn radius_sample(radius: f64) -> Complex {
     }
 }
 
-/// Random sample fro [0..1)
+/// Random sample from [0..1)
 fn random_prob() -> f64 {
     let mut rng = rand::thread_rng();
     rand::distributions::Uniform::from(0.0..1.0).sample(&mut rng)
