@@ -28,16 +28,16 @@ fn main() -> EscapeResult {
 
     match &cli_options {
         CliOptions::Sample(sample_options) => {
-            sample::run_sampling(&sample_options)?;
+            sample::run_sampling(sample_options)?;
         }
         CliOptions::Draw(draw_options) => {
-            draw::run_draw(&draw_options)?;
+            draw::run_draw(draw_options)?;
         }
         CliOptions::Merge(merge_options) => {
-            sample::run_merge(&merge_options)?;
+            sample::run_merge(merge_options)?;
         }
         CliOptions::Report(report_options) => {
-            sample::run_report(&report_options)?;
+            sample::run_report(report_options)?;
         }
     }
     Ok(())

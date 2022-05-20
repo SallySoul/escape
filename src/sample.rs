@@ -160,7 +160,7 @@ impl WorkerState {
     fn orbit_intersections(&mut self) -> usize {
         let mut result = 0;
         for c in &self.orbit_buffer {
-            if self.project(&c).is_some() {
+            if self.project(c).is_some() {
                 result += 1;
             }
         }
@@ -175,7 +175,7 @@ impl WorkerState {
         for (i, cutoff) in self.sample_config.cutoffs.iter().enumerate() {
             if self.orbit_buffer.len() <= *cutoff {
                 for c in &self.orbit_buffer {
-                    if let Some((x, y)) = self.project(&c) {
+                    if let Some((x, y)) = self.project(c) {
                         self.grids[i].increment(x, y);
                         result += 1;
                     }
@@ -567,7 +567,7 @@ pub fn run_sampling(sample_options: &SampleOptions) -> EscapeResult {
         .build()
         .unwrap();
 
-    runtime.block_on(async_sampling(&sample_options))?;
+    runtime.block_on(async_sampling(sample_options))?;
 
     Ok(())
 }
@@ -634,7 +634,7 @@ pub fn run_merge(merge_options: &MergeOptions) -> EscapeResult {
         .build()
         .unwrap();
 
-    rt.block_on(async_merge(&merge_options))?;
+    rt.block_on(async_merge(merge_options))?;
 
     Ok(())
 }
