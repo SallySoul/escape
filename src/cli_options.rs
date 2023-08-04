@@ -10,6 +10,7 @@ pub enum CliOptions {
     Draw(DrawOptions),
     Merge(MergeOptions),
     Report(ReportOptions),
+    OrbitStudy(OrbitStudyOptions),
 }
 
 /// Sample the buddhabrot and create a histogram result
@@ -102,4 +103,20 @@ pub struct ReportOptions {
     /// Use pretty logging
     #[structopt(short, long)]
     pub pretty_logging: bool,
+}
+
+/// Run on full view, save # orbits >= length to vtk
+#[derive(StructOpt, Debug)]
+pub struct OrbitStudyOptions {
+    /// Output directory
+    #[structopt(short, long, parse(from_os_str))]
+    pub output: PathBuf,
+
+    /// Miniumum orbit length
+    #[structopt(short, long, default_value = "1000000")]
+    pub min_len: usize,
+
+    /// Set a timeout for running workers (seconds)
+    #[structopt(short, long)]
+    pub duration: Option<u64>,
 }

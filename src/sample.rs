@@ -1,16 +1,16 @@
-use parking_lot::RwLock;
 use rand::distributions::Distribution;
 use std::io::BufReader;
 use std::sync::Arc;
-use tracing::{error, info, trace, warn};
+use tracing::*;
 
+use crate::stop_switch::*;
 use crate::cli_options::{MergeOptions, ReportOptions, SampleOptions};
 use crate::config::{SampleConfig, ViewConfig};
 use crate::histogram_result::HistogramResult;
 use crate::types::{Complex, CountGrid, EscapeError, EscapeResult};
 
 /// Randomly sample a complex number with a norm less than radius
-fn radius_sample(radius: f64) -> Complex {
+pub fn radius_sample(radius: f64) -> Complex {
     let mut rng = rand::thread_rng();
     let range = rand::distributions::Uniform::from(-radius..radius);
     let rad_sqr = radius * radius;
@@ -46,56 +46,6 @@ fn project_onto_view(view: &ViewConfig, c: &Complex) -> Option<(usize, usize)> {
     } else {
         None
     }
-}
-
-/// Utility used to synchronize workers
-#[derive(Debug)]
-struct StopSwitch {
-    stop: bool,
-}
-type ArcSwitch = Arc<RwLock<StopSwitch>>;
-
-impl StopSwitch {
-    async fn new(maybe_duration: &Option<u64>) -> ArcSwitch {
-        let result = Arc::new(RwLock::new(StopSwitch { stop: false }));
-
-        tokio::spawn(ctrl_c_handler(result.clone()));
-
-        if let Some(seconds) = maybe_duration {
-            tokio::spawn(duration_handler(result.clone(), *seconds));
-        }
-
-        result
-    }
-
-    fn stop(&self) -> bool {
-        self.stop
-    }
-}
-
-async fn ctrl_c_handler(switch: ArcSwitch) -> EscapeResult {
-    loop {
-        tokio::signal::ctrl_c().await?;
-        let mut s = switch.write();
-        if s.stop {
-            error!("Stop Switch already triggered");
-        } else {
-            info!("CTRL C pressed!");
-            s.stop = true;
-        }
-    }
-}
-
-async fn duration_handler(switch: ArcSwitch, seconds: u64) -> EscapeResult {
-    tokio::time::sleep(std::time::Duration::from_secs(seconds)).await;
-    let mut s = switch.write();
-    if s.stop {
-        error!("Stop Switch already triggered");
-    } else {
-        info!("Duration complete");
-        s.stop = true;
-    }
-    Ok(())
 }
 
 #[derive(Debug)]

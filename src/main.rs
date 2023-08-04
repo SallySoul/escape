@@ -19,6 +19,10 @@ mod sample;
 /// Implementation to draw buddhabrot histogram result
 mod draw;
 
+mod orbit;
+
+mod stop_switch;
+
 use crate::cli_options::CliOptions;
 use crate::types::EscapeResult;
 use structopt::StructOpt;
@@ -35,6 +39,9 @@ fn main() -> EscapeResult {
         }
         CliOptions::Merge(merge_options) => {
             sample::run_merge(merge_options)?;
+        }
+        CliOptions::OrbitStudy(orbit_study_options) => {
+            orbit::run_orbit_study(orbit_study_options)?;
         }
         CliOptions::Report(report_options) => {
             sample::run_report(report_options)?;
